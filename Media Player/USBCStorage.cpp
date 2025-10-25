@@ -1,11 +1,11 @@
 #include "USBCStorage.h"
 
-USBCStorage:USBCStorage()
+USBCStorage::USBCStorage()
     : connected(false), mounted(false), mountPoint("/usb") {
 
 }
 
-USBCD::~UBCStorage() {
+USBCStorage::~UBCStorage() {
     if(mounted) {
         unmountUSB();
     }
