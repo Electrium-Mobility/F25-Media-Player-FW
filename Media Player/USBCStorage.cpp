@@ -5,17 +5,17 @@ USBCStorage::USBCStorage()
 
 }
 
-USBCStorage::~UBCStorage() {
-    if(mounted) {
-        unmountUSB();
-    }
+USBCStorage::~USBCStorage() {
+    // if(mounted) {
+    //     unmountUSB();
+    // }
 }
 
 bool USBCStorage::detectConnection() {
     // TODO: finish
 }
 
-esp_err_t USBCStorage:mountUSB(const char* path) {
+esp_err_t USBCStorage::mountUSB(const char* path) {
     // TODO: finish
 }
 

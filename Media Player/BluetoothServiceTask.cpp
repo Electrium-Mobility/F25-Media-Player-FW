@@ -27,5 +27,5 @@ void BluetoothServiceTask::stopBluetooth() {
 
 void BluetoothServiceTask::vTaskDelay(int ms) {
     // Wrapper for FreeRTOS delay
-    vTaskDelay(pdMS_TO_TICKS(ms));
+    //vTaskDelay(pdMS_TO_TICKS(ms));
 }

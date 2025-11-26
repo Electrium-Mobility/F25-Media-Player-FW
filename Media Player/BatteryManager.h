@@ -2,6 +2,7 @@
 #define BATTERY_MANAGER_H
 
 #include "esp_err.h"
+#include <esp_adc_cal_types_legacy.h>
 
 class BatteryManager {
 private:
@@ -11,7 +12,7 @@ private:
     adc1_channel_t adcChannel;
     esp_adc_cal_characteristics_t* adcChars;
 
-    int voltageToPercentage(float voltage)
+    int voltageToPercentage(float voltage);
 
 public:
     BatteryManager();

@@ -1,7 +1,7 @@
 #include "BatteryManager.h"
 
-BatteryManager::BatteryManager()
-    : currentLevel(100), charging(false), voltage(4,2f), adcChannel(BATTERY_ADC_CHANNEL), adcChars(nullptr) {
+BatteryManager::BatteryManager() {
+    //: currentLevel(100), charging(false), voltage(4,2f), adcChannel(BATTERY_ADC_CHANNEL), adcChars(nullptr) {
 
 }
 

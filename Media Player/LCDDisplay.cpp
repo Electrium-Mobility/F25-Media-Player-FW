@@ -1,16 +1,16 @@
 #include "LCDDisplay.h"
 #include "esp_log.h"
 
-LCDDisplay::LCDDisplay()
-    : brightness(80), currentScreen(Screen::TRACK_INFO), i2cPort(LCD_I2C_PORT) {
+LCDDisplay::LCDDisplay() {
+    //: brightness(80), currentScreen(Screen::TRACK_INFO), i2cPort(LCD_I2C_PORT) {
 
     }
 
 LCDDisplay::~LCDDisplay() {
-    i2c_driver_delete(i2cPort);
+    //i2c_driver_delete(i2cPort);
 }
 
-esp_err_t LCDDisplay::intialize() {
+esp_err_t LCDDisplay::initialize() {
     // TODO: finish
 }
 

@@ -4,7 +4,7 @@
 #include "esp_err.h"
 #include <string>
 
-enum class Scree {
+enum class Screen {
     TRACK_INFO,
     MENU,
     SETTINGS,
@@ -14,8 +14,8 @@ enum class Scree {
 class LCDDisplay {
 private:
     int brightness;
-    Screen currentScreen;
-    i2c_port_t i2cPort;
+    //Screen currentScreen;
+    //i2c_port_t i2cPort;
 
     // Send command to LCD
     esp_err_t sendCommand(uint8_t cmd);
@@ -48,9 +48,7 @@ public:
 
     void clearScreen();
 
-    void setScreen(Screen screen) {
-        currentScreen = screen;
-    }
+    void setScreen(Screen screen);
 };
 
 #endif
