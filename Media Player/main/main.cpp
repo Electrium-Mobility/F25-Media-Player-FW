@@ -6,7 +6,7 @@
 
 #define TESTING_MODE 1
 #if TESTING_MODE
-#include "SDCardTask.h"
+#include "SDCardManager.h"
 #endif
 // --------------------------------------------------------------------------
 #ifdef __cplusplus
@@ -21,9 +21,12 @@ int app_main();
 // --------------------------------------------------------------------------
 
 void alternate_task(void) {
-    SDCardTask card_module = SDCardTask{};
+    SDCardManager card_module = SDCardManager{};
     printf("Mount Success: %b\n", card_module.mountSD());
-    card_module.listFiles();
+    card_module.showFileList("/");
+    card_module.showFileList("/My Folder");
+    card_module.showFileList("My Folder");
+    card_module.showFileList("Error");
 }
 
 int app_main(void)
