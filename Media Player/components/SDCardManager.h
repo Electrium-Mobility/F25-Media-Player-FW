@@ -23,7 +23,8 @@ public:
     
     
     bool sortFilesByName();
-    bool sortFilesByDate();
+    bool sortFilesByNameAscending();
+    //bool sortFilesByType();
     FILE getFile(const char *path);
     FILINFO getFileInfo(const char *path);
     // Some kind of getFile functionality look into FILE features
@@ -32,8 +33,8 @@ public:
     
     // Functions (from UML)
     bool mountSD();
-    void listFilesFromCard(const char *path);
-    void showFileList(const char *path);
+    void updateFileListFromCard(const char *path);
+    void showFileList(const char *path = nullptr);
     void* openFile(const string& filePath);   // placeholder: FileHandle
     void closeFile(const string& filePath);
     vector<uint8_t> readFileChunk(void* fileHandle);

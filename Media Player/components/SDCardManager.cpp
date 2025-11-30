@@ -11,6 +11,11 @@
 
 #define MOUNT_POINT "/sdcard"
 #define TAG "SDCardManager"
+#define MAX_STR_LEN 276
+#define ASCII_LOWCASE_L 97 // a
+#define ASCII_LOWCASE_H 122 // z
+#define ASCII_UPCASE_L 65 // A
+#define ASCII_UPCASE_H 90 // Z
 
 using SD = SDCardManager;
 /**
@@ -65,25 +70,26 @@ bool SD::mountSD() {
 
 
 /**
- * @brief Decodes a bitwise date from FILINFO. Returns the value MMDDYYYY to the OUT parameter
+ * @brief Decodes a bitwise date from FILINFO. Returns the value YYYYMMDD to the OUT parameter
  * @param date a 16 bit WORD coming from a FILINFO data type 
  * @param out a c-style string of where the decoded value should be overwritten to. Should be at least 16 bytes
  */
 void decodeDate(WORD date, char *out) {
     WORD d = date; 
-    snprintf(out, 16, "%02d-%02d-%04d",
+    snprintf(out, 16, "%04d-%02d-%02d",
+        (int) (((d >> 9) & 0x7F) + 1980),   // Year
         (int) ((d >> 5) & 0x0F),            // Month
-        (int) (d & 0x1F),                    // Day
-        (int) (((d >> 9) & 0x7F) + 1980)   // Year
+        (int) (d & 0x1F)                    // Day
     );
 }
 
 /**
  * @brief Updates fileList with all present files listed in the path directory in the order
  * presented by the SD Card file system. This is considered unsorted
- * @param path a c-style string of the directory to be read
+ * @param path a c-style string of the directory to be read. Pass in "/" for current directory,
+ * or pass in "/My directory" or "My directory". The "/" is unnecessary.
  */
-void SD::listFilesFromCard(const char *path) {
+void SD::updateFileListFromCard(const char *path) {
     SD::fileList.clear(); // Remove information from previous read
 
     // General procedure: open dir --> access/read dir --> close dir 
@@ -105,11 +111,10 @@ void SD::listFilesFromCard(const char *path) {
     }
 
     FILINFO myFile;
-    char filePrintInfo[299 + 1]; 
+    char filePrintInfo[MAX_STR_LEN]; 
     char date[16];
+
     while ((res = f_readdir(&myDirectory, &myFile)) == 0 && myFile.fname[0] != '\0') {
-        // The first argument checks for successful reads, the second checks for reaching end of directory
-       
         decodeDate(myFile.fdate, date);// The fdate field in FILINFO is encoded as not human readable
         // bits 0-4 are the days, bits 5-8 are the months, bits 9-15 are the years 
         
@@ -118,13 +123,12 @@ void SD::listFilesFromCard(const char *path) {
         //    Additionally, the snprintf function requires 255 (previously) but your LFN name is 256, is compile error
         // 2. Imagine that we have 300 songs in a single directory. Each song is 256 char, so = 76800 bytes
         //    Based off of the memory mapping produced every build having aroud 300k-ish bytes left, we should be careful!
-        snprintf(filePrintInfo, 299, "[%d] %s %s %s", 
-            res, 
-            date,
-            myFile.fname,
-            (myFile.fattrib & AM_DIR) ? "**" : ""
+        snprintf(filePrintInfo, MAX_STR_LEN, "%s%s",  
+            //date,
+            (myFile.fattrib & AM_DIR) ? "** " : "",
+            myFile.fname
         );
-        printf("%s\n", filePrintInfo); 
+        //printf("%s\n", filePrintInfo); 
 
         std::string s = filePrintInfo;
         SD::fileList.push_back(s);
@@ -135,24 +139,145 @@ void SD::listFilesFromCard(const char *path) {
         // You will notice that there's a hidden directory called System Volume Information that Windows PC cannot detect
         // It's hidden by OS but manages storage handling. Direct POSIX operations can still detect it. Just leave alone.
     }
+    if (res != 0) {
+        ESP_LOGI(TAG, "Something went unexpected reading a file name! FRESULT: %d", res);
+    }
     res = f_closedir(&myDirectory);
     ESP_LOGI(TAG, "Closing Directory ErrNo: %d", res);
 }
 
 /**
  * @brief Prints all files as is currently in the listed directory
- * @param path a constant c-style string pointer. Pass in "/" for current directory,
- * or pass in "/My directory" or "My directory". The "/" is unnecessary.
  */
 void SD::showFileList(const char *path) {
-    ESP_LOGI(TAG, "Checking DIR");
-    listFilesFromCard(path);
+    ESP_LOGI(TAG, "Printing fileList");
+    if (path != nullptr) {
+        ESP_LOGI(TAG, "Calling fileList Update");
+        updateFileListFromCard(path);
+    }
+    
     for (std::string s : fileList) {
         printf("%s\n", s.c_str());
     }
     printf("# Files: %d\nTotal Capacity: %d\n", SD::fileList.size(), SD::fileList.capacity());
 
 }
+
+/**
+ * @brief Performs insertion sort to order all files in ascending order by Name.
+ * @return a boolean indicating whether a sort was sucessful or not
+ * @deprecated
+ * @note Using operators like ">" on Long File Name Strings might not work as intended. 
+ * This is because LFN contains UTF-16 bytes instead of UTF-8/ASCII. This results in JUNK
+ * decoding like H��?J < ���?↓, and thus failure to compare correctly.
+ */
+bool SD::sortFilesByName() {
+    if (SD::fileList.size() == 0) {
+        ESP_LOGI(TAG, "Tried to sort file list when there are no files");
+        return false;
+    }
+    for (int upper = 1; upper < SD::fileList.size(); upper++) {
+        std::string toBeChecked = SD::fileList[upper];
+        int lastIndex = upper;
+        for (int i = upper; i > 0; i--) {
+            if (SD::fileList[upper] < SD::fileList[i-1]) {
+                ESP_LOGI(TAG, "%s < %s", SD::fileList[upper], SD::fileList[i-1]);
+                SD::fileList[i] = SD::fileList[i-1];
+                lastIndex = i-1;
+            }            
+        }
+        SD::fileList[lastIndex] = toBeChecked;
+    }
+    return true; 
+}
+
+/**
+ * @brief Compare two characters, ignoring case if a letter in the alphabet. 
+ * @param c1 a char from a string
+ * @param c2 a char from a string
+ * @return a signed char representing (c1 - c2). When =0, c1 == c2. When >0, c1 > c2. When <0, c1 < c2.
+ * If c1 or c2 are both part of the alphabet but are different cases, c2 will be lowercased/capitalized 
+ * to match c1, then (c1 - c2) is returned. Additionally, if c1 = '\0', it means str1 is shorter than str2,
+ * so the function will return -1 < 0; The opposite is true when c2 = '\0'. This scenario should only be
+ * reached if both strings happen to share the same characters all througout.
+ */
+signed char compareAlphabetIgnoreCase(char c1, char c2) {
+    if (c1 == '\0') {
+        return -1;
+    }
+    if (c2 == '\0') {
+        return 1;
+    }
+    if (c1 == c2) {
+        return 0;
+    }
+    if (ASCII_LOWCASE_L <= c1 && c1 <= ASCII_LOWCASE_H) {
+        if (ASCII_UPCASE_L <= c2 && c2 <= ASCII_UPCASE_H) {
+            return c1 - (c2 + 32);
+        } else {
+            return c1 - c2;
+        }
+    } else if (ASCII_UPCASE_L <= c1 && c1 <= ASCII_UPCASE_H) {
+        if (ASCII_LOWCASE_L <= c2 && c2 <= ASCII_LOWCASE_H) {
+            return c1 - (c2 - 32);
+        } else {
+            return c1 - c2;
+        }
+    } else {
+        return c1 - c2;
+    }
+    
+}
+
+/**
+ * @brief Sorts fileList alphabetically in ascending order based on name. This sort ignores letter cases, so
+ * lower and upper cases aren't differentiated. 
+ */
+bool SD::sortFilesByNameAscending() {
+    // ESP_LOGI(TAG, "%d A == A TRUE", compareAlphabetIgnoreCase('A', 'A'));
+    // ESP_LOGI(TAG, "%d A == a TRUE", compareAlphabetIgnoreCase('A', 'a'));
+    // ESP_LOGI(TAG, "%d a == A TRUE", compareAlphabetIgnoreCase('a', 'A'));
+    // ESP_LOGI(TAG, "%d a == b FALSE", compareAlphabetIgnoreCase('a', 'b'));
+    // ESP_LOGI(TAG, "%d a == B FALSE", compareAlphabetIgnoreCase('a', 'B'));
+    // ESP_LOGI(TAG, "%d a == . FALSE", compareAlphabetIgnoreCase('a', '.'));
+
+    if (SD::fileList.size() == 0) {
+        ESP_LOGI(TAG, "Tried to sort file list when there are no files");
+        return false;
+    }
+
+    // Outer loop of insertion sort, determining who is next to be compared
+    for (int upper = 1; upper < SD::fileList.size(); upper++) {
+        std::string toBeChecked = SD::fileList[upper];
+        int lastIndex = upper;
+        //ESP_LOGI(TAG, "Comparing if %s", SD::fileList[upper]);
+
+        // Inner loop of insertion sort, determining where to [upper] should go
+        for (int i = upper; i > 0; i--) {
+            //ESP_LOGI(TAG, "UPPER VALUE %d", upper);
+            char c1, c2;
+            signed char compareResult = 0;
+            // Loop through each string, comparing their characters at each index until they are not equal
+            for (int j = 0; j < MAX_STR_LEN && compareResult == 0; j++) {
+                //ESP_LOGI(TAG, "J VALUE %d", j);
+                c1 = toBeChecked[j], c2 = SD::fileList[i-1][j];  
+                //ESP_LOGI(TAG, "%c < %c, COMPARING", c1, c2);       
+                compareResult = compareAlphabetIgnoreCase(c1, c2);
+                
+            }
+            //c1 = toBeChecked[0], c2 = SD::fileList[i-1][0];
+            //swap = compareAlphabetIgnoreCase(c1, c2) < 0;
+            if (compareResult < 0) {
+                //ESP_LOGI(TAG, "%c < %c, MOVED", c1, c2);
+                SD::fileList[i] = SD::fileList[i-1];
+                lastIndex = i-1;
+            }            
+        }
+        SD::fileList[lastIndex] = toBeChecked;
+    }
+    return true; 
+}
+
 
 void* SD::openFile(const std::string& filePath) {
     // TODO: Open file and return handle for reading
