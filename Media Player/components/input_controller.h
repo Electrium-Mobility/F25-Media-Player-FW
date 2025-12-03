@@ -15,20 +15,22 @@
 extern "C" {
 #endif
 
-struct InputController {
+class InputController {
     int * gpio_buttons; /* Array of GPIO numbers used for buttons. */
     int gpio_buttons_count; /* Number of GPIOs. */
     uint32_t last_button_press_ms; /* Last press timestamp for debouncing. */
+public:
+        /* API */
+    esp_err_t input_controller_init_buttons(struct InputController *ic, const int *gpios, int count);
+    void input_controller_handle_play_pause(void);
+    void input_controller_handle_next(void);
+    void input_controller_handle_previous(void);
+    void input_controller_handle_volume_up(void);
+    void input_controller_handle_volume_down(void);
+    void input_controller_handle_menu(void);
 };
 
-/* API */
-esp_err_t input_controller_init_buttons(struct InputController *ic, const int *gpios, int count);
-void input_controller_handle_play_pause(void);
-void input_controller_handle_next(void);
-void input_controller_handle_previous(void);
-void input_controller_handle_volume_up(void);
-void input_controller_handle_volume_down(void);
-void input_controller_handle_menu(void);
+
 
 #ifdef __cplusplus
 }

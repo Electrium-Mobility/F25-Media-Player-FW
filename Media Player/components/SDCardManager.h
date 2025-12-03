@@ -17,19 +17,20 @@ public:
     vector<string> fileList;
     QueueHandle_t queueHandle; // Not sure what the queue is supposed to do
     sdmmc_card_t *card;
-    // TODO: You need a current status field, maybe FILE type but how to deal with MP3
-    // You also need sorted list of files in current DIR... 
+    string currentFile;
+    size_t currentFileIndex;
 
     
-    
+    SDCardManager(bool mount);
     bool sortFilesByName();
     bool sortFilesByNameAscending();
+    bool shuffle();
     //bool sortFilesByType();
     FILE getFile(const char *path);
     FILINFO getFileInfo(const char *path);
-    // Some kind of getFile functionality look into FILE features
-    // Shuffle?
-    // getCurrentStatus
+    string getAbsCurrentFilePath();
+    void incrementCurrentFile();
+    void decrementCurrentFile();
     
     // Functions (from UML)
     bool mountSD();

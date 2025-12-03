@@ -18,13 +18,28 @@
 #define ASCII_UPCASE_H 90 // Z
 
 using SD = SDCardManager;
+
+SD::SDCardManager(bool mount) :
+    sdMountStatus(false),
+    fileList(),
+    queueHandle(nullptr),
+    card(nullptr),
+    currentFile(),
+    currentFileIndex(0)
+    {
+    
+    if (mount) {
+        mountSD();
+    }
+}
+
 /**
  * @brief Mounts the SD Card Volume as VFS. Sets up required sdmmc interface.
  * @todo requires better error handling and probing. When board is brought up, make sure to use card detect
  * @return a boolean indicating whether the VFS FatFs creation was succesful
  */
 bool SD::mountSD() {
-    SD::sdMountStatus = false;
+    sdMountStatus = false;
     esp_err_t ret;
     esp_vfs_fat_mount_config_t mountConfig = {
         .format_if_mount_failed = false,
@@ -53,7 +68,7 @@ bool SD::mountSD() {
         &hostConfig, 
         &slotConfig, 
         &mountConfig, 
-        &(SD::card) // function will define card
+        &(card) // function will define card
     );
 
     if (ret != ESP_OK) {
@@ -62,9 +77,9 @@ bool SD::mountSD() {
     }
 
     ESP_LOGI(TAG, "Mount Success: %d", ret);
-    sdmmc_card_print_info(stdout, SD::card); // This is why structs suck and classes are bettery
+    sdmmc_card_print_info(stdout, card); // This is why structs suck and classes are bettery
     // Anyways, seems like you can treat stdout as a FILE type?    
-    SD::sdMountStatus = true;
+    sdMountStatus = true;
     return true;
 }
 
@@ -90,7 +105,7 @@ void decodeDate(WORD date, char *out) {
  * or pass in "/My directory" or "My directory". The "/" is unnecessary.
  */
 void SD::updateFileListFromCard(const char *path) {
-    SD::fileList.clear(); // Remove information from previous read
+    fileList.clear(); // Remove information from previous read
 
     // General procedure: open dir --> access/read dir --> close dir 
     // fopen() is from stdio.h, f_open() is from ff.h (FatFs module)
@@ -105,6 +120,7 @@ void SD::updateFileListFromCard(const char *path) {
     // The alternative explanation is that the FatFs module is a high level library that simply just uses the directory
     // already set as the root directory (in this case esp_vfs_fats set it as "/sdcard"). It's just treating the sd card 
     // dir as base so it's trying to search for another "/sdcard" folder inside the real "/sdcard" dir.
+    // Note that the POSIX layer does not know /sdcard is root!
     ESP_LOGI(TAG, "Opening Directory ErrNo: %d", res);
     if (res != 0) {
         ESP_LOGE(TAG, "Failed to open path. Path probably doesn't exist");
@@ -131,7 +147,7 @@ void SD::updateFileListFromCard(const char *path) {
         //printf("%s\n", filePrintInfo); 
 
         std::string s = filePrintInfo;
-        SD::fileList.push_back(s);
+        fileList.push_back(s);
 
         // Why is it not printing the full name?
         // Because Long File Name is not enabled. Currently falls back to Short File Name
@@ -144,6 +160,10 @@ void SD::updateFileListFromCard(const char *path) {
     }
     res = f_closedir(&myDirectory);
     ESP_LOGI(TAG, "Closing Directory ErrNo: %d", res);
+    
+    currentFileIndex = 0;
+    currentFile = fileList[currentFileIndex];
+    ESP_LOGI(TAG, "currentFileIndex: %d, currentFile: %s", currentFileIndex, currentFile);
 }
 
 /**
@@ -159,9 +179,11 @@ void SD::showFileList(const char *path) {
     for (std::string s : fileList) {
         printf("%s\n", s.c_str());
     }
-    printf("# Files: %d\nTotal Capacity: %d\n", SD::fileList.size(), SD::fileList.capacity());
+    printf("# Files: %d\nTotal Capacity: %d\n", fileList.size(), fileList.capacity());
 
 }
+
+
 
 /**
  * @brief Performs insertion sort to order all files in ascending order by Name.
@@ -172,22 +194,26 @@ void SD::showFileList(const char *path) {
  * decoding like H��?J < ���?↓, and thus failure to compare correctly.
  */
 bool SD::sortFilesByName() {
-    if (SD::fileList.size() == 0) {
+    if (fileList.size() == 0) {
         ESP_LOGI(TAG, "Tried to sort file list when there are no files");
         return false;
     }
-    for (int upper = 1; upper < SD::fileList.size(); upper++) {
-        std::string toBeChecked = SD::fileList[upper];
+    for (int upper = 1; upper < fileList.size(); upper++) {
+        std::string toBeChecked = fileList[upper];
         int lastIndex = upper;
         for (int i = upper; i > 0; i--) {
-            if (SD::fileList[upper] < SD::fileList[i-1]) {
-                ESP_LOGI(TAG, "%s < %s", SD::fileList[upper], SD::fileList[i-1]);
-                SD::fileList[i] = SD::fileList[i-1];
+            if (fileList[upper] < fileList[i-1]) {
+                ESP_LOGI(TAG, "%s < %s", fileList[upper], fileList[i-1]);
+                fileList[i] = fileList[i-1];
                 lastIndex = i-1;
             }            
         }
-        SD::fileList[lastIndex] = toBeChecked;
+        fileList[lastIndex] = toBeChecked;
     }
+    currentFileIndex = 0;
+    currentFile = fileList[currentFileIndex];
+    ESP_LOGI(TAG, "currentFileIndex: %d, currentFile: %s", currentFileIndex, currentFile);
+    
     return true; 
 }
 
@@ -241,16 +267,16 @@ bool SD::sortFilesByNameAscending() {
     // ESP_LOGI(TAG, "%d a == B FALSE", compareAlphabetIgnoreCase('a', 'B'));
     // ESP_LOGI(TAG, "%d a == . FALSE", compareAlphabetIgnoreCase('a', '.'));
 
-    if (SD::fileList.size() == 0) {
+    if (fileList.size() == 0) {
         ESP_LOGI(TAG, "Tried to sort file list when there are no files");
         return false;
     }
 
     // Outer loop of insertion sort, determining who is next to be compared
-    for (int upper = 1; upper < SD::fileList.size(); upper++) {
-        std::string toBeChecked = SD::fileList[upper];
+    for (int upper = 1; upper < fileList.size(); upper++) {
+        std::string toBeChecked = fileList[upper];
         int lastIndex = upper;
-        //ESP_LOGI(TAG, "Comparing if %s", SD::fileList[upper]);
+        //ESP_LOGI(TAG, "Comparing if %s", fileList[upper]);
 
         // Inner loop of insertion sort, determining where to [upper] should go
         for (int i = upper; i > 0; i--) {
@@ -260,22 +286,49 @@ bool SD::sortFilesByNameAscending() {
             // Loop through each string, comparing their characters at each index until they are not equal
             for (int j = 0; j < MAX_STR_LEN && compareResult == 0; j++) {
                 //ESP_LOGI(TAG, "J VALUE %d", j);
-                c1 = toBeChecked[j], c2 = SD::fileList[i-1][j];  
+                c1 = toBeChecked[j], c2 = fileList[i-1][j];  
                 //ESP_LOGI(TAG, "%c < %c, COMPARING", c1, c2);       
                 compareResult = compareAlphabetIgnoreCase(c1, c2);
                 
             }
-            //c1 = toBeChecked[0], c2 = SD::fileList[i-1][0];
+            //c1 = toBeChecked[0], c2 = fileList[i-1][0];
             //swap = compareAlphabetIgnoreCase(c1, c2) < 0;
             if (compareResult < 0) {
                 //ESP_LOGI(TAG, "%c < %c, MOVED", c1, c2);
-                SD::fileList[i] = SD::fileList[i-1];
+                fileList[i] = fileList[i-1];
                 lastIndex = i-1;
             }            
         }
-        SD::fileList[lastIndex] = toBeChecked;
+        fileList[lastIndex] = toBeChecked;
     }
     return true; 
+}
+
+std::string SD::getAbsCurrentFilePath() {
+    return (std::string(MOUNT_POINT) + std::string("/") + currentFile);
+}
+
+/**
+ * @todo PLEASE TEST THIS
+ */
+void SD::incrementCurrentFile() {
+    currentFileIndex++;
+    if (currentFileIndex >= fileList.size()) {
+        currentFileIndex = fileList.size() - 1;
+    }
+    currentFile = fileList[currentFileIndex];
+    ESP_LOGI(TAG, "currentFileIndex: %d, currentFile: %s", currentFileIndex, currentFile);
+}
+
+/**
+ * @todo PLEASE TEST THIS
+ */
+void SD::decrementCurrentFile() {
+    if (currentFileIndex > 0) {
+        currentFileIndex--;
+    }
+    currentFile = fileList[currentFileIndex];
+    ESP_LOGI(TAG, "currentFileIndex: %d, currentFile: %s", currentFileIndex, currentFile);
 }
 
 
