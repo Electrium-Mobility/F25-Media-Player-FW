@@ -4,8 +4,8 @@
  *
  * Note: This is a pure-C skeleton. External types from ESP-ADF are kept opaque (void* or int enums).
  */
-#ifndef INPUT_CONTROLLER_H
-#define INPUT_CONTROLLER_H
+#ifndef InputController_H
+#define InputController_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -21,13 +21,13 @@ class InputController {
     uint32_t last_button_press_ms; /* Last press timestamp for debouncing. */
 public:
         /* API */
-    esp_err_t input_controller_init_buttons(struct InputController *ic, const int *gpios, int count);
-    void input_controller_handle_play_pause(void);
-    void input_controller_handle_next(void);
-    void input_controller_handle_previous(void);
-    void input_controller_handle_volume_up(void);
-    void input_controller_handle_volume_down(void);
-    void input_controller_handle_menu(void);
+    esp_err_t InputController_init_buttons(struct InputController *ic, const int *gpios, int count);
+    void InputController_handle_play_pause(void);
+    void InputController_handle_next(void);
+    void InputController_handle_previous(void);
+    void InputController_handle_volume_up(void);
+    void InputController_handle_volume_down(void);
+    void InputController_handle_menu(void);
 };
 
 
@@ -36,4 +36,4 @@ public:
 }
 #endif
 
-#endif /* INPUT_CONTROLLER_H */
+#endif /* InputController_H */

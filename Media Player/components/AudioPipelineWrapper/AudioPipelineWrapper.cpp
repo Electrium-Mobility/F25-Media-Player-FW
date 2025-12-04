@@ -2,53 +2,53 @@
  * AudioPipeline implementation skeleton.
  * Replace TODOs with actual ESP-IDF / ESP-ADF calls in your environment.
  */
-#include "audio_pipeline_wrapper.h"
+#include "AudioPipelineWrapper.h"
 #include <string.h>
 
 /* Create a new audio pipeline. */
-void * audio_pipeline_wrapper_create(struct AudioPipeline *pl) {
+void * AudioPipelineWrapper_create(struct AudioPipeline *pl) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
     return NULL;
 }
 
 /* Register element with the pipeline. */
-esp_err_t audio_pipeline_wrapper_register_element(struct AudioPipeline *pl, void *element) {
+esp_err_t AudioPipelineWrapper_register_element(struct AudioPipeline *pl, void *element) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
     return ESP_OK;
 }
 
 /* Link elements in configured order. */
-esp_err_t audio_pipeline_wrapper_link_elements(struct AudioPipeline *pl) {
+esp_err_t AudioPipelineWrapper_link_elements(struct AudioPipeline *pl) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
     return ESP_OK;
 }
 
 /* Start pipeline. */
-esp_err_t audio_pipeline_wrapper_start(struct AudioPipeline *pl) {
+esp_err_t AudioPipelineWrapper_start(struct AudioPipeline *pl) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
     return ESP_OK;
 }
 
 /* Pause pipeline. */
-esp_err_t audio_pipeline_wrapper_pause(struct AudioPipeline *pl) {
+esp_err_t AudioPipelineWrapper_pause(struct AudioPipeline *pl) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
     return ESP_OK;
 }
 
 /* Stop pipeline. */
-esp_err_t audio_pipeline_wrapper_stop(struct AudioPipeline *pl) {
+esp_err_t AudioPipelineWrapper_stop(struct AudioPipeline *pl) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
     return ESP_OK;
 }
 
 /* Resume pipeline. */
-esp_err_t audio_pipeline_wrapper_resume(struct AudioPipeline *pl) {
+esp_err_t AudioPipelineWrapper_resume(struct AudioPipeline *pl) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
     return ESP_OK;
 }
 
 /* Return state. */
-int audio_pipeline_wrapper_get_state(struct AudioPipeline *pl) {
+int AudioPipelineWrapper_get_state(struct AudioPipeline *pl) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
     return 0;
 }

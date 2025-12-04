@@ -1,3 +1,3 @@
 idf_component_register(SRCS "main.cpp"
-                    REQUIRES driver components fatfs
+                    REQUIRES driver SDCardManager MusicPlayer fatfs
                     INCLUDE_DIRS ".")

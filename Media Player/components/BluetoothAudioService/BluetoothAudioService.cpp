@@ -2,34 +2,34 @@
  * BluetoothAudioService implementation skeleton.
  * Replace TODOs with actual ESP-IDF / ESP-ADF calls in your environment.
  */
-#include "bluetooth_audio_service.h"
+#include "BluetoothAudioService.h"
 #include <string.h>
 
 /* Configure name and mode. */
-void bluetooth_audio_service_configure(struct BluetoothAudioService *svc, const char *name, int mode) {
+void BluetoothAudioService_configure(struct BluetoothAudioService *svc, const char *name, int mode) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
 }
 
 /* Start the BT audio service (bluetooth_service_start). */
-esp_err_t bluetooth_audio_service_start(struct BluetoothAudioService *svc) {
+esp_err_t BluetoothAudioService_start(struct BluetoothAudioService *svc) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
     return ESP_OK;
 }
 
 /* Stop the BT audio service. */
-esp_err_t bluetooth_audio_service_stop(struct BluetoothAudioService *svc) {
+esp_err_t BluetoothAudioService_stop(struct BluetoothAudioService *svc) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
     return ESP_OK;
 }
 
 /* Create BT stream element (bluetooth_service_create_stream). */
-void * bluetooth_audio_service_create_stream(struct BluetoothAudioService *svc) {
+void * BluetoothAudioService_create_stream(struct BluetoothAudioService *svc) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
     return NULL;
 }
 
 /* Return current connection status as integer enum. */
-int bluetooth_audio_service_get_connection_status(struct BluetoothAudioService *svc) {
+int BluetoothAudioService_get_connection_status(struct BluetoothAudioService *svc) {
     /* TODO: Implement using ESP-IDF/ADF APIs */
     return 0;
 }

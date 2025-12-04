@@ -47,9 +47,9 @@ void alternateTask(void) {
     // If it prints "/", it means the POSIX layer does not recognize sdcard as a root
     cardModule.incrementCurrentFile();
     cardModule.incrementCurrentFile();
-    mp.testWavAudioI2s(cardModule.getAbsCurrentFilePath().c_str());
+    mp.testWavAudioI2S(cardModule.getAbsCurrentFilePath().c_str());
     cardModule.decrementCurrentFile();
-    mp.testWavAudioI2s(cardModule.getAbsCurrentFilePath().c_str());
+    mp.testWavAudioI2S(cardModule.getAbsCurrentFilePath().c_str());
     mp.testCloseI2S();
     // You need to use absolute paths here
     

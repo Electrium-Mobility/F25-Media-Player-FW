@@ -14,7 +14,14 @@
 static const char *TAG3 = "MusicPlayer";
 #define BUFFER_SIZE 2048
 
-i2s_chan_handle_t tx_handle;
+MusicPlayer::MusicPlayer() : 
+    current_track(),
+    volume(0.25f),
+    is_playing(false),
+    play_mode(0),
+    tx_handle(NULL) {
+
+    }
 
 /* Start playing a specific track. */
 esp_err_t MusicPlayer::music_player_play(struct MusicPlayer *mp, const char *track_path) {
@@ -125,7 +132,7 @@ void MusicPlayer::testInitI2S() {
  * @brief A Test Function. Send an abs path to a WAV file to play it via I2S.
  * @param file a c-style string being the absolute path to a wav file
  */
-void MusicPlayer::testWavAudioI2s(const char *file) {
+void MusicPlayer::testWavAudioI2S(const char *file) {
     FILE *f = fopen(file, "rb"); // Treat WAV file as is, no character conversion
     if (f == nullptr) {
         ESP_LOGE(TAG3, "Failed to open file: %s", file);
@@ -148,7 +155,6 @@ void MusicPlayer::testWavAudioI2s(const char *file) {
     size_t bytes_written = 0;
     size_t elements = fread(src_buf, sizeof(int16_t), BUFFER_SIZE, f);
 
-    float volume = 0.25f;   // 25% volume (0.0 → silent, 1.0 → full scale
     while(elements > 0) {
         // for (int i = 0; i < 20; i++) {
         //     printf("%d ", src_buf[i]);
@@ -193,6 +199,21 @@ void MusicPlayer::testWavAudioI2s(const char *file) {
     }
 }
 
+void MusicPlayer::testMP3AudioI2S(const char *file) {
+    // I originally wanted to use minimp3 for decoding but here's a blog about someone testing it on STM32
+    // http://cmorgan.org/2023/10/05/mp3-decoding-on-embedded.html
+    // Performance on STM32 was limited, and despite ESP32S3 having dual core, there's a chance that minimp3
+    // won't get the results we're looking for, and such process to debug and optimize will take too much time
+    // Additionally, minimp3 supports NEON and SSE architectures extensions for ARM and x86 respectively
+    // ESP is Xtensa.
+    // We'll need to search for another alternative. Checking out Helix MP3 for esp32
+    // https://github.com/chmorgan/esp-libhelix-mp3?tab=readme-ov-file
+    // Here's a forum related to our issue https://esp32.com/viewtopic.php?t=40413 
+    // Alternatively there's also the audio development framework
+
+}
+
 void MusicPlayer::testCloseI2S() {
     i2s_del_channel(tx_handle);
+    
 }

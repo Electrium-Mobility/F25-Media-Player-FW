@@ -4,8 +4,8 @@
  *
  * Note: This is a pure-C skeleton. External types from ESP-ADF are kept opaque (void* or int enums).
  */
-#ifndef BLUETOOTH_CONTROLLER_H
-#define BLUETOOTH_CONTROLLER_H
+#ifndef BluetoothController_H
+#define BluetoothController_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -22,13 +22,13 @@ struct BluetoothController {
 };
 
 /* API */
-esp_err_t bluetooth_controller_init(struct BluetoothController *bc, void *cfg);
-esp_err_t bluetooth_controller_enable(struct BluetoothController *bc, int mode);
-esp_err_t bluetooth_controller_disable(struct BluetoothController *bc);
-int bluetooth_controller_get_status(struct BluetoothController *bc);
+esp_err_t BluetoothController_init(struct BluetoothController *bc, void *cfg);
+esp_err_t BluetoothController_enable(struct BluetoothController *bc, int mode);
+esp_err_t BluetoothController_disable(struct BluetoothController *bc);
+int BluetoothController_get_status(struct BluetoothController *bc);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* BLUETOOTH_CONTROLLER_H */
+#endif /* BluetoothController_H */
