@@ -4,6 +4,11 @@
 #include <stdio.h>
 #include "esp_log.h"
 #include <sys/unistd.h>
+//extern "C" {
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+// You need to import FreeRTOS before task
+//}
 
 #define TAG "main"
 #define TESTING_MODE 1
@@ -24,15 +29,17 @@ int app_main();
 // --------------------------------------------------------------------------
 
 void alternateTask(void) {
-    SDCardManager cardModule = SDCardManager(true);
-    //printf("Mount Success: %b\n", cardModule.mountSD());
-    ESP_LOGI(TAG, "Showing Empty fileLists");
-    cardModule.showFileList();
-    ESP_LOGI(TAG, "Manually Calling fileList Update");
+    SDCardManager cardModule = SDCardManager(false);
+    if (!cardModule.mountSD()) {
+        return;
+    }
+    //ESP_LOGI(TAG, "Showing Empty fileLists");
+    //cardModule.showFileList();
+    //ESP_LOGI(TAG, "Manually Calling fileList Update");
     cardModule.updateFileListFromCard("/");
-    ESP_LOGI(TAG, "Printing Updated list");
-    cardModule.showFileList();
-    ESP_LOGI(TAG, "Showing fileLists with explicit path");
+    //ESP_LOGI(TAG, "Printing Updated list");
+    //cardModule.showFileList();
+    //ESP_LOGI(TAG, "Showing fileLists with explicit path");
     cardModule.showFileList("/");
     // cardModule.showFileList("My Folder");
     // cardModule.showFileList("Error");
@@ -46,11 +53,23 @@ void alternateTask(void) {
     printf("cwd = %s\n", getcwd(NULL, 0));
     // If it prints "/", it means the POSIX layer does not recognize sdcard as a root
     cardModule.incrementCurrentFile();
-    cardModule.incrementCurrentFile();
-    mp.testWavAudioI2S(cardModule.getAbsCurrentFilePath().c_str());
-    cardModule.decrementCurrentFile();
-    mp.testWavAudioI2S(cardModule.getAbsCurrentFilePath().c_str());
+    //cardModule.incrementCurrentFile();
+    //mp.testWavAudioI2S(cardModule.getAbsCurrentFilePath().c_str());
+    while(cardModule.currentFileIndex < cardModule.fileList.size()-1) {
+        mp.testMP3AudioI2S(cardModule.getAbsCurrentFilePath().c_str());
+        cardModule.incrementCurrentFile();
+        //vTaskDelay(pdMS_TO_TICKS(100)); 
+        // FOR SOME REASON FREERTOS.H DOES NOT HAVE vTaskDelay ENABLED
+        // IDK HOW TO TURN IT ON IN MENUCONFIG
+        // There a problem with the freeRTOS import actually, it's not the function itself.
+        // Probably has to do with this project being c++ but everything else is c
+    }
+
     mp.testCloseI2S();
+    
+    //mp.testWavAudioI2S(cardModule.getAbsCurrentFilePath().c_str());
+    //mp.testCloseI2S();
+
     // You need to use absolute paths here
     
     //cardModule.sortFilesByName();

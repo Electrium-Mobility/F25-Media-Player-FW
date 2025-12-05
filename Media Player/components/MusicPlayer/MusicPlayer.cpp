@@ -10,6 +10,9 @@
 #include <driver/i2s_std.h>
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "mp3dec.h"
+#include "audio_player.h"
+#include "audio_mp3.h"
 
 static const char *TAG3 = "MusicPlayer";
 #define BUFFER_SIZE 2048
@@ -205,11 +208,41 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
     // Performance on STM32 was limited, and despite ESP32S3 having dual core, there's a chance that minimp3
     // won't get the results we're looking for, and such process to debug and optimize will take too much time
     // Additionally, minimp3 supports NEON and SSE architectures extensions for ARM and x86 respectively
-    // ESP is Xtensa.
+    // ESP is Xtensa, so this support is limited.
     // We'll need to search for another alternative. Checking out Helix MP3 for esp32
     // https://github.com/chmorgan/esp-libhelix-mp3?tab=readme-ov-file
     // Here's a forum related to our issue https://esp32.com/viewtopic.php?t=40413 
     // Alternatively there's also the audio development framework
+
+    // esp-libhelix-mp3 is an extended version of libhelix-mp3 by chmorgan. The main code files in this
+    // librariy are mp3dec.h and mp3common.h, where the first is a high level code, and the latter low level
+    // chmorgan also made a library/project called audioPlayer where his high level code uses mp3dec.h, which
+    // is libhelix-mp. You can find that example here:  
+    // https://github.com/chmorgan/esp-audio-player/blob/main/test/audio_player_test.c
+    
+    // To install esp-libhelix-mp3 or libhelix-mp3 libraries, you need to git clone the repo into the
+    // components folder and activate it as a component use CMakeLists.txt
+
+    // To use the higher level audioPLayer library that chmorgan made (audio_player.h), you need to open an
+    // ESP-IDF terminal and install using the command "idf.py add-dependency chmorgan/esp-audio-player"
+
+    // Upon building you can then use audio_player.h or audio_mp3.h, the latter being a wrapper for mp3dec.h
+
+    // The advanced development framework also has support for mp3 decoding found here:
+    // https://docs.espressif.com/projects/esp-adf/en/latest/api-reference/codecs/mp3_decoder.html
+    // But ADF is advanced high level abstract code - it does a lot of processes automatically, and wraps everything up using pipelines
+    // For our project, GPT considers it overkill to use ADF. Plus, ADF is harder to set up and uses a lot of memory
+    // It also leads me away from the low level learning I want. 
+
+    // Also, esp-libhelix-mp3 uses a branch of libhelix-mp3 that is 8 years old. Maybe consider just using libhelix-mp3 alone
+
+    FILE *f = fopen(file, "rb");
+    printf("%s %s \n", file, is_mp3(f) ? "MP3" : "NO");
+    // There seems to be a recurring observation that the second last file of the list (if it is an mp3)
+    // is not deemed an mp3...
+    fclose(f);
+
+
 
 }
 

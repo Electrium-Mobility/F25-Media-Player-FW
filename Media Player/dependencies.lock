@@ -1,10 +1,28 @@
 dependencies:
+  chmorgan/esp-audio-player:
+    dependencies: []
+    source:
+      path: C:\Users\Robin\Documents\GitHub\F25-Media-Player\Media Player\components\chmorgan__esp-audio-player
+      type: local
+    version: 1.0.7
+  chmorgan/esp-libhelix-mp3:
+    component_hash: cbb76089dc2c5749f7b470e2e70aedc44c9da519e04eb9a67d4c7ec275229e53
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=4.1.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.0.3
   idf:
     source:
       type: idf
     version: 5.5.1
 direct_dependencies:
+- chmorgan/esp-audio-player
+- chmorgan/esp-libhelix-mp3
 - idf
-manifest_hash: b3db499ccd832db8f1ec23f8ee55f8f4a0f00ff94004eafcdb14a0691a895c47
+manifest_hash: 4054dc7ad2e4819722676bd9c9754c378a93b1c15b390b29101256f27f4a5f3c
 target: esp32s3
 version: 2.0.0

@@ -15,6 +15,7 @@ public:
     // Attributes (from UML)
     bool sdMountStatus;
     vector<string> fileList;
+    vector<string> fileDate;
     QueueHandle_t queueHandle; // Not sure what the queue is supposed to do
     sdmmc_card_t *card;
     string currentFile;

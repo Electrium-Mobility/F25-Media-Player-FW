@@ -139,15 +139,19 @@ void SD::updateFileListFromCard(const char *path) {
         //    Additionally, the snprintf function requires 255 (previously) but your LFN name is 256, is compile error
         // 2. Imagine that we have 300 songs in a single directory. Each song is 256 char, so = 76800 bytes
         //    Based off of the memory mapping produced every build having aroud 300k-ish bytes left, we should be careful!
+        // 3. Certain songs make have Unicode characters in their name instead of pure ASCII, meaning LFN cannot register these names
+        //    and will default to using SFN. This depends on where you get your music!
         snprintf(filePrintInfo, MAX_STR_LEN, "%s%s",  
             //date,
             (myFile.fattrib & AM_DIR) ? "** " : "",
             myFile.fname
         );
         //printf("%s\n", filePrintInfo); 
-
+        
         std::string s = filePrintInfo;
         fileList.push_back(s);
+        std::string d = date;
+        fileDate.push_back(d);
 
         // Why is it not printing the full name?
         // Because Long File Name is not enabled. Currently falls back to Short File Name
@@ -176,8 +180,8 @@ void SD::showFileList(const char *path) {
         updateFileListFromCard(path);
     }
     
-    for (std::string s : fileList) {
-        printf("%s\n", s.c_str());
+    for (int i = 0; i < fileList.size(); i++) {
+        printf("%s %s\n", fileDate[i].c_str(), fileList[i].c_str());
     }
     printf("# Files: %d\nTotal Capacity: %d\n", fileList.size(), fileList.capacity());
 
@@ -200,15 +204,18 @@ bool SD::sortFilesByName() {
     }
     for (int upper = 1; upper < fileList.size(); upper++) {
         std::string toBeChecked = fileList[upper];
+        std::string dateAttribute = fileDate[upper];
         int lastIndex = upper;
         for (int i = upper; i > 0; i--) {
             if (fileList[upper] < fileList[i-1]) {
                 ESP_LOGI(TAG, "%s < %s", fileList[upper], fileList[i-1]);
                 fileList[i] = fileList[i-1];
+                fileDate[i] = fileDate[i-1];
                 lastIndex = i-1;
             }            
         }
         fileList[lastIndex] = toBeChecked;
+        fileDate[lastIndex] = dateAttribute;
     }
     currentFileIndex = 0;
     currentFile = fileList[currentFileIndex];
@@ -275,6 +282,7 @@ bool SD::sortFilesByNameAscending() {
     // Outer loop of insertion sort, determining who is next to be compared
     for (int upper = 1; upper < fileList.size(); upper++) {
         std::string toBeChecked = fileList[upper];
+        std::string dateAttribute = fileDate[upper];
         int lastIndex = upper;
         //ESP_LOGI(TAG, "Comparing if %s", fileList[upper]);
 
@@ -296,10 +304,12 @@ bool SD::sortFilesByNameAscending() {
             if (compareResult < 0) {
                 //ESP_LOGI(TAG, "%c < %c, MOVED", c1, c2);
                 fileList[i] = fileList[i-1];
+                fileDate[i] = fileDate[i-1];
                 lastIndex = i-1;
             }            
         }
         fileList[lastIndex] = toBeChecked;
+        fileDate[lastIndex] = dateAttribute;
     }
     return true; 
 }
@@ -312,12 +322,11 @@ std::string SD::getAbsCurrentFilePath() {
  * @todo PLEASE TEST THIS
  */
 void SD::incrementCurrentFile() {
-    currentFileIndex++;
-    if (currentFileIndex >= fileList.size()) {
-        currentFileIndex = fileList.size() - 1;
+    if (currentFileIndex < fileList.size()-1) {
+        currentFileIndex++;
     }
     currentFile = fileList[currentFileIndex];
-    ESP_LOGI(TAG, "currentFileIndex: %d, currentFile: %s", currentFileIndex, currentFile);
+    //ESP_LOGI(TAG, "currentFileIndex: %d, currentFile: %s", currentFileIndex, currentFile);
 }
 
 /**
