@@ -340,6 +340,11 @@ void SD::decrementCurrentFile() {
     ESP_LOGI(TAG, "currentFileIndex: %d, currentFile: %s", currentFileIndex, currentFile);
 }
 
+void SD::zeroCurrentFile() {
+    currentFileIndex = 0;
+    currentFile = fileList[currentFileIndex];
+}
+
 
 void* SD::openFile(const std::string& filePath) {
     // TODO: Open file and return handle for reading

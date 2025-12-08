@@ -44,31 +44,38 @@ void alternateTask(void) {
     // cardModule.showFileList("My Folder");
     // cardModule.showFileList("Error");
     printf("Current File: %s", cardModule.getAbsCurrentFilePath().c_str());
+    MusicPlayer mp = MusicPlayer{};
+    mp.testInitI2S();
+    // while(cardModule.currentFileIndex < cardModule.fileList.size()-1) {
+    //     mp.testMP3AudioI2S(cardModule.getAbsCurrentFilePath().c_str());
+    //     cardModule.incrementCurrentFile();
+    // }
+
     ESP_LOGI(TAG, "Sorting fileList");
     cardModule.sortFilesByNameAscending();
     cardModule.showFileList();
-    MusicPlayer mp = MusicPlayer{};
-    mp.testInitI2S();
+    
     
     printf("cwd = %s\n", getcwd(NULL, 0));
     // If it prints "/", it means the POSIX layer does not recognize sdcard as a root
     cardModule.incrementCurrentFile();
     //cardModule.incrementCurrentFile();
     //mp.testWavAudioI2S(cardModule.getAbsCurrentFilePath().c_str());
-    while(cardModule.currentFileIndex < cardModule.fileList.size()-1) {
+    //cardModule.zeroCurrentFile();
+    //while(cardModule.currentFileIndex < cardModule.fileList.size()-1) {
         mp.testMP3AudioI2S(cardModule.getAbsCurrentFilePath().c_str());
-        cardModule.incrementCurrentFile();
+        //cardModule.incrementCurrentFile();
         //vTaskDelay(pdMS_TO_TICKS(100)); 
         // FOR SOME REASON FREERTOS.H DOES NOT HAVE vTaskDelay ENABLED
         // IDK HOW TO TURN IT ON IN MENUCONFIG
         // There a problem with the freeRTOS import actually, it's not the function itself.
         // Probably has to do with this project being c++ but everything else is c
-    }
+    //}
 
-    mp.testCloseI2S();
-    
-    //mp.testWavAudioI2S(cardModule.getAbsCurrentFilePath().c_str());
     //mp.testCloseI2S();
+    
+    //mp.testWavAudioI2S("/sdcard/Its Going Down Now - Persona 3 Reload Original Soundtrack.wav");
+    mp.testCloseI2S();
 
     // You need to use absolute paths here
     

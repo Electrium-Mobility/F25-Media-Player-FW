@@ -32,6 +32,7 @@ public:
     string getAbsCurrentFilePath();
     void incrementCurrentFile();
     void decrementCurrentFile();
+    void zeroCurrentFile();
     
     // Functions (from UML)
     bool mountSD();

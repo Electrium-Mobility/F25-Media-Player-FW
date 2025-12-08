@@ -19,7 +19,7 @@ static const char *TAG3 = "MusicPlayer";
 
 MusicPlayer::MusicPlayer() : 
     current_track(),
-    volume(0.25f),
+    volume(0.1f),
     is_playing(false),
     play_mode(0),
     tx_handle(NULL) {
@@ -107,7 +107,7 @@ void MusicPlayer::testInitI2S() {
     * These two helper macros are defined in `i2s_std.h` which can only be used in STD mode.
     * They can help to specify the slot and clock configurations for initialization or updating */
     i2s_std_config_t std_cfg = {
-        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(48000),
+        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(44100),
         // It's Going Down Now uses 48khz, Breath of the Wild Main Theme uses 44.1khz
         // THe freq and bit width should be encoded in the mp3 metadata 
         .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
@@ -150,22 +150,23 @@ void MusicPlayer::testWavAudioI2S(const char *file) {
     // Based off of what is printed in firmware, it's most likely that clipping is caused because
     // the power rails for the amp can't supply enough current, so it peaks
     // Also, what difference is there reading the file as int16 or an int8?
-    int16_t *src_buf = (int16_t*) malloc(BUFFER_SIZE*sizeof(int16_t));
+    int8_t *src_buf = (int8_t*) malloc(BUFFER_SIZE*sizeof(int8_t));
     memset(src_buf, 0, BUFFER_SIZE);
 
     i2s_channel_enable(tx_handle);
 
     size_t bytes_written = 0;
-    size_t elements = fread(src_buf, sizeof(int16_t), BUFFER_SIZE, f);
+    size_t elements = fread(src_buf, sizeof(int8_t), BUFFER_SIZE, f);
 
-    while(elements > 0) {
-        // for (int i = 0; i < 20; i++) {
-        //     printf("%d ", src_buf[i]);
-        // }
-        // printf("\n");
+    size_t count = 0;
+    while(elements > 0 && count < 200) {
+        for (int i = 0; i < 20; i++) {
+            printf("%d ", src_buf[i]);
+        }
+        printf("\n");
 
         for (int i = 0; i < BUFFER_SIZE; i++) {
-            src_buf[i] = (int16_t)(src_buf[i] * volume);
+            src_buf[i] = (int8_t)(src_buf[i] * volume);
 
             // // Hard clamp to prevent overflow
             // if (temp > 32767) temp = 32767;
@@ -175,11 +176,12 @@ void MusicPlayer::testWavAudioI2S(const char *file) {
         // Why must the third parameter be buffer_size * sizeof(int16_t)
         // Because the third parameter wants to know how many total BYTES your buffer has
         // That would be your BUFFER_SIZE (aka the number of elements) * sizeof(int16_t) (data type per element)
-        i2s_channel_write(tx_handle, src_buf, BUFFER_SIZE*sizeof(int16_t), &bytes_written, 100);
-        elements = fread(src_buf, sizeof(int16_t), BUFFER_SIZE, f);
-        if (bytes_written != BUFFER_SIZE*sizeof(int16_t)) {
+        i2s_channel_write(tx_handle, src_buf, BUFFER_SIZE*sizeof(int8_t), &bytes_written, 100);
+        elements = fread(src_buf, sizeof(int8_t), BUFFER_SIZE, f);
+        if (bytes_written != BUFFER_SIZE*sizeof(int8_t)) {
             ESP_LOGW(TAG3, "Only %d/%d bytes written", bytes_written, BUFFER_SIZE);
         }
+        count++;
     }
     
     /* If the configurations of slot or clock need to be updated, stop the channel first and then update it */
@@ -237,16 +239,91 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
     // Also, esp-libhelix-mp3 uses a branch of libhelix-mp3 that is 8 years old. Maybe consider just using libhelix-mp3 alone
 
     FILE *f = fopen(file, "rb");
-    printf("%s %s \n", file, is_mp3(f) ? "MP3" : "NO");
-    // There seems to be a recurring observation that the second last file of the list (if it is an mp3)
-    // is not deemed an mp3...
+    if (f == nullptr) {
+        ESP_LOGW(TAG3, "Failed to open file: %s", file);
+        return;
+    }
+
+    // is_mp3() seems to be inconsistent. Sometimes it will think a mp3 file is not an mp3, and sometimes it skips wav files?
+    // Requires further testing to see under what conditions the function fails
+    if (!is_mp3(f)) {
+        printf("NOT MP3 :: %s\n", file);
+        fclose(f);
+        return;
+    }
+    ESP_LOGI(TAG3, "Starting decoding process");
+    HMP3Decoder myDecoder = MP3InitDecoder();
+    // Notice that the structs use uint8 buffers. These buffers are to be treated as raw byte arrays instead of
+    // pure audio samples, which should come in signed form. THe output seems to be uint8 as well, but some how
+    // we need to make sure the output to I2S is signed
+    decode_data output;
+    output.samples_capacity = 2 * 2 * 576; //size_t
+    output.samples_capacity_max = output.samples_capacity*2; ///size_t
+    output.samples = static_cast<uint8_t*>(malloc(output.samples_capacity_max)); //uint8_t*
+    // THe rest is set by the function decodeMP3
+    output.frame_count = 0; //size_t ??
+    output.fmt = {
+        .sample_rate = 0, //int ??
+        .bits_per_sample = 0, //uint32_t ??
+        .channels = 2 //uint32_t
+    };
+    
+    mp3_instance mp3_data;
+    mp3_data.data_buf_size = 1940 * 3; //size_t
+    mp3_data.data_buf = static_cast<uint8_t*>(malloc(mp3_data.data_buf_size)); //uint8_t*
+    mp3_data.bytes_in_data_buf = 0; //size_t
+    mp3_data.read_ptr = mp3_data.data_buf; //uint8_t*
+    mp3_data.eof_reached = false;
+    
+    int8_t *my_buf = static_cast<int8_t*>(malloc(output.samples_capacity_max));
+
+    //mp3_data.data_buf;
+    DECODE_STATUS status;
+    size_t bytesWritten = 0;
+    
+    i2s_channel_enable(tx_handle);
+
+    int count = 0;
+    while (true) {
+        status = decode_mp3(myDecoder, f, &output, &mp3_data);
+        size_t bytesToWrite = output.frame_count * output.fmt.channels * (output.fmt.bits_per_sample / 8);
+        ESP_LOGI(TAG3, "Decode Status %d", status);
+
+        for (int i = 0; i < output.samples_capacity_max; i++) {
+            my_buf[i] = (int8_t) (output.samples[i])*volume;
+        }
+
+        for (int i = 0; i < 20; i++) {
+            printf("%d ", (output.samples[i]));
+        }
+        printf("\n");
+
+        i2s_channel_write(tx_handle, my_buf, bytesToWrite, &bytesWritten, 100);
+        if (bytesToWrite != bytesWritten) {
+            ESP_LOGW(TAG3, "Bytes written: %d/%d", bytesWritten, bytesToWrite);
+        }
+        if (status != DECODE_STATUS_CONTINUE && status != DECODE_STATUS_NO_DATA_CONTINUE) {
+            break;
+        }
+        count++;
+    }
+
+    ESP_LOGI(TAG3, "File end");
+    
     fclose(f);
+    free(output.samples);
+    free(mp3_data.data_buf);
+    free(my_buf);
+    i2s_channel_disable(tx_handle);
+
+    
 
 
 
 }
 
 void MusicPlayer::testCloseI2S() {
+    //i2s_channel_disable(tx_handle);
     i2s_del_channel(tx_handle);
     
 }
