@@ -40,6 +40,7 @@ public:
     void music_player_get_status(struct MusicPlayer *mp, char *out_buf, int out_len);
     void testWavAudioI2S(const char *file);
     void testMP3AudioI2S(const char *file);
+    bool testReconfigI2S(uint32_t freq, int bitsPerSample, int channels);
     void testInitI2S();
     void testCloseI2S();
 };

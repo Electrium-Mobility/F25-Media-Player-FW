@@ -204,6 +204,20 @@ void MusicPlayer::testWavAudioI2S(const char *file) {
     }
 }
 
+bool MusicPlayer::testReconfigI2S(uint32_t freq, int bitsPerSample, int channels) {
+    i2s_channel_disable(tx_handle);
+    
+    if (freq == 0 || bitsPerSample == 0 || channels == 0) {
+        
+        ESP_LOGE(TAG3, "A ZERO VALUE DETECTED");
+        return false;
+    }
+    i2s_std_clk_config_t config = I2S_STD_CLK_DEFAULT_CONFIG(freq);
+    i2s_channel_reconfig_std_clock(tx_handle, &config);
+    return true;
+
+}
+
 void MusicPlayer::testMP3AudioI2S(const char *file) {
     // I originally wanted to use minimp3 for decoding but here's a blog about someone testing it on STM32
     // http://cmorgan.org/2023/10/05/mp3-decoding-on-embedded.html
@@ -252,6 +266,8 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
         return;
     }
     ESP_LOGI(TAG3, "Starting decoding process");
+
+    
     HMP3Decoder myDecoder = MP3InitDecoder();
     // Notice that the structs use uint8 buffers. These buffers are to be treated as raw byte arrays instead of
     // pure audio samples, which should come in signed form. THe output seems to be uint8 as well, but some how
@@ -260,6 +276,7 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
     output.samples_capacity = 2 * 2 * 576; //size_t
     output.samples_capacity_max = output.samples_capacity*2; ///size_t
     output.samples = static_cast<uint8_t*>(malloc(output.samples_capacity_max)); //uint8_t*
+    memset(output.samples, 0, output.samples_capacity_max);
     // THe rest is set by the function decodeMP3
     output.frame_count = 0; //size_t ??
     output.fmt = {
@@ -271,52 +288,89 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
     mp3_instance mp3_data;
     mp3_data.data_buf_size = 1940 * 3; //size_t
     mp3_data.data_buf = static_cast<uint8_t*>(malloc(mp3_data.data_buf_size)); //uint8_t*
+    memset(mp3_data.data_buf, 0, mp3_data.data_buf_size);
     mp3_data.bytes_in_data_buf = 0; //size_t
     mp3_data.read_ptr = mp3_data.data_buf; //uint8_t*
     mp3_data.eof_reached = false;
     
-    int8_t *my_buf = static_cast<int8_t*>(malloc(output.samples_capacity_max));
+    //int8_t *my_buf = static_cast<int8_t*>(malloc(output.samples_capacity_max));
+    //memset(my_buf, 0, mp3_data.data_buf_size);
 
     //mp3_data.data_buf;
     DECODE_STATUS status;
     size_t bytesWritten = 0;
+    size_t averageDigitalAudio = 0;
+
     
     i2s_channel_enable(tx_handle);
 
     int count = 0;
+    int prevFreq = 44100;
+    volume = 0.1;
     while (true) {
         status = decode_mp3(myDecoder, f, &output, &mp3_data);
         size_t bytesToWrite = output.frame_count * output.fmt.channels * (output.fmt.bits_per_sample / 8);
-        ESP_LOGI(TAG3, "Decode Status %d", status);
+
+        //ESP_LOGI(TAG3, "Decode Status %d", status);
 
         for (int i = 0; i < output.samples_capacity_max; i++) {
-            my_buf[i] = (int8_t) (output.samples[i])*volume;
+            output.samples[i] = ((uint8_t) ((int8_t)(output.samples[i])*volume));
+            //averageDigitalAudio += (int8_t) (output.samples[i]);
         }
-
-        for (int i = 0; i < 20; i++) {
-            printf("%d ", (output.samples[i]));
+        //printf("Avg Audio: %f, Avg Capacity: %d\n", averageDigitalAudio/((float)(output.samples_capacity_max)), output.samples_capacity_max);
+        //averageDigitalAudio = 0;
+        // for (int i = 0; i < 20; i++) {
+        //     printf("%d ", my_buf[i]);
+        // }
+        // printf("\n");
+        
+        if (output.fmt.sample_rate != prevFreq) {
+            prevFreq = output.fmt.sample_rate;
+            ESP_LOGI(TAG3, "Freq: %d Hz, Channels: %d, Bit/Sample: %d", output.fmt.sample_rate, output.fmt.channels, output.fmt.bits_per_sample);
+            if(!testReconfigI2S(output.fmt.sample_rate, 0, 0)) {
+                printf("Problem with file %s\n", file);
+                break;
+             }
+            i2s_channel_enable(tx_handle);
         }
-        printf("\n");
-
-        i2s_channel_write(tx_handle, my_buf, bytesToWrite, &bytesWritten, 100);
+        
+        if (count < 100) {
+            i2s_channel_write(tx_handle, (int16_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
+            //ESP_LOGI(TAG3, "int16 %d", count);
+        } else if (count < 200) {
+            i2s_channel_write(tx_handle, (int8_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
+            //ESP_LOGI(TAG3, "int8 %d", count);
+            
+        } else {
+            count = 0;
+            volume = 0;
+            i2s_channel_write(tx_handle, (int8_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
+            break;
+        }
+        
         if (bytesToWrite != bytesWritten) {
             ESP_LOGW(TAG3, "Bytes written: %d/%d", bytesWritten, bytesToWrite);
         }
         if (status != DECODE_STATUS_CONTINUE && status != DECODE_STATUS_NO_DATA_CONTINUE) {
+            ESP_LOGI(TAG3, "End of song reached");
             break;
         }
         count++;
+        volume += 0.0001;
     }
 
-    ESP_LOGI(TAG3, "File end");
+    // ESP_LOGI(TAG3, "File end");
     
-    fclose(f);
+
+
     free(output.samples);
     free(mp3_data.data_buf);
-    free(my_buf);
-    i2s_channel_disable(tx_handle);
+    MP3FreeDecoder(myDecoder);
 
     
+    i2s_channel_disable(tx_handle);
+
+    fclose(f);
 
 
 

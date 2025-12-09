@@ -62,15 +62,16 @@ void alternateTask(void) {
     //cardModule.incrementCurrentFile();
     //mp.testWavAudioI2S(cardModule.getAbsCurrentFilePath().c_str());
     //cardModule.zeroCurrentFile();
-    //while(cardModule.currentFileIndex < cardModule.fileList.size()-1) {
+    while(cardModule.currentFileIndex < cardModule.fileList.size()-1) {
+        printf("Free mem: %d\n", heap_caps_get_free_size(8));
         mp.testMP3AudioI2S(cardModule.getAbsCurrentFilePath().c_str());
-        //cardModule.incrementCurrentFile();
+        cardModule.incrementCurrentFile();
         //vTaskDelay(pdMS_TO_TICKS(100)); 
         // FOR SOME REASON FREERTOS.H DOES NOT HAVE vTaskDelay ENABLED
         // IDK HOW TO TURN IT ON IN MENUCONFIG
         // There a problem with the freeRTOS import actually, it's not the function itself.
         // Probably has to do with this project being c++ but everything else is c
-    //}
+    }
 
     //mp.testCloseI2S();
     
