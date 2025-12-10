@@ -12,6 +12,7 @@
 
 #define TAG "main"
 #define TESTING_MODE 1
+
 #if TESTING_MODE
 #include "SDCardManager.h"
 #include "MusicPlayer.h"
@@ -27,6 +28,7 @@ int app_main();
 }
 #endif
 // --------------------------------------------------------------------------
+int SONG = 3;
 
 void alternateTask(void) {
     SDCardManager cardModule = SDCardManager(false);
@@ -62,20 +64,37 @@ void alternateTask(void) {
     //cardModule.incrementCurrentFile();
     //mp.testWavAudioI2S(cardModule.getAbsCurrentFilePath().c_str());
     //cardModule.zeroCurrentFile();
-    while(cardModule.currentFileIndex < cardModule.fileList.size()-1) {
-        printf("Free mem: %d\n", heap_caps_get_free_size(8));
-        mp.testMP3AudioI2S(cardModule.getAbsCurrentFilePath().c_str());
-        cardModule.incrementCurrentFile();
-        //vTaskDelay(pdMS_TO_TICKS(100)); 
-        // FOR SOME REASON FREERTOS.H DOES NOT HAVE vTaskDelay ENABLED
-        // IDK HOW TO TURN IT ON IN MENUCONFIG
-        // There a problem with the freeRTOS import actually, it's not the function itself.
-        // Probably has to do with this project being c++ but everything else is c
-    }
+    // while(cardModule.currentFileIndex < cardModule.fileList.size()-1) {
+    //     printf("Free mem: %d\n", heap_caps_get_free_size(8));
+    //     mp.testMP3AudioI2S(cardModule.getAbsCurrentFilePath().c_str());
+    //     cardModule.incrementCurrentFile();
+    //     //vTaskDelay(pdMS_TO_TICKS(100)); 
+    //     // FOR SOME REASON FREERTOS.H DOES NOT HAVE vTaskDelay ENABLED
+    //     // IDK HOW TO TURN IT ON IN MENUCONFIG
+    //     // There a problem with the freeRTOS import actually, it's not the function itself.
+    //     // Probably has to do with this project being c++ but everything else is c
+    // }
 
     //mp.testCloseI2S();
-    
-    //mp.testWavAudioI2S("/sdcard/Its Going Down Now - Persona 3 Reload Original Soundtrack.wav");
+    for (;SONG > -1; SONG--) {
+        printf("Free mem: %d\n", heap_caps_get_free_size(8));
+        mp.volume = 0.25;
+        if (SONG == 0) {
+            mp.testMP3AudioI2S("/sdcard/440Hz.mp3");
+            mp.testWavAudioI2S("/sdcard/440Hz.wav");     
+        } else if (SONG == 1) {
+            mp.testMP3AudioI2S("/sdcard/Breath of the Wild (Main Theme) - The Legend of Zelda Breath of the Wild Soundtrack.mp3");
+            mp.testWavAudioI2S("/sdcard/Breath of the Wild (Main Theme) - The Legend of Zelda Breath of the Wild Soundtrack.wav");
+        } else if (SONG == 2) {
+            mp.volume = 0.1;
+            mp.testMP3AudioI2S("/sdcard/It's Going Down Now - Persona 3 Reload Original Soundtrack.mp3");
+            mp.testWavAudioI2S("/sdcard/Its Going Down Now - Persona 3 Reload Original Soundtrack.wav");
+        } else {
+            mp.testMP3AudioI2S("/sdcard/Pokemon XY Anime OST_ BW Title Screen(XY Ver).mp3");
+            mp.testWavAudioI2S("/sdcard/Pokemon XY Anime OST_ BW Title Screen(XY Ver).wav");
+        }
+    }
+
     mp.testCloseI2S();
 
     // You need to use absolute paths here

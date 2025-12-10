@@ -16,10 +16,11 @@
 
 static const char *TAG3 = "MusicPlayer";
 #define BUFFER_SIZE 2048
+int prevFreq = 44100;
 
 MusicPlayer::MusicPlayer() : 
     current_track(),
-    volume(0.1f),
+    volume(0.25f),
     is_playing(false),
     play_mode(0),
     tx_handle(NULL) {
@@ -141,7 +142,7 @@ void MusicPlayer::testWavAudioI2S(const char *file) {
         ESP_LOGE(TAG3, "Failed to open file: %s", file);
         return;
     }
-    
+    ESP_LOGI(TAG3, "Starting WAV playback on %s", file);
     // Allocating heap memory for buffer (alternatively call calloc)
     // NOTE: reading as uint is different from reading int!
     // Sounds fluctuates between + and - of the refernce point - always using unsigned means
@@ -159,11 +160,23 @@ void MusicPlayer::testWavAudioI2S(const char *file) {
     size_t elements = fread(src_buf, sizeof(int8_t), BUFFER_SIZE, f);
 
     size_t count = 0;
-    while(elements > 0 && count < 200) {
-        for (int i = 0; i < 20; i++) {
-            printf("%d ", src_buf[i]);
-        }
-        printf("\n");
+    while(elements > 0 && count < 2000) {
+        if (count % 200 == 0) {
+            ESP_LOGI(TAG3, "%d %d %d %d %d %d %d %d %d %d ", 
+                src_buf[0], 
+                src_buf[1], 
+                src_buf[2],
+                src_buf[3],
+                src_buf[4],
+                src_buf[5],
+                src_buf[6],
+                src_buf[7],
+                src_buf[8],
+                src_buf[9]
+            );
+            
+            //printf("\n");
+        } 
 
         for (int i = 0; i < BUFFER_SIZE; i++) {
             src_buf[i] = (int8_t)(src_buf[i] * volume);
@@ -214,6 +227,7 @@ bool MusicPlayer::testReconfigI2S(uint32_t freq, int bitsPerSample, int channels
     }
     i2s_std_clk_config_t config = I2S_STD_CLK_DEFAULT_CONFIG(freq);
     i2s_channel_reconfig_std_clock(tx_handle, &config);
+    ESP_LOGI(TAG3, "Channel Reconfig'ed");
     return true;
 
 }
@@ -265,7 +279,8 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
         fclose(f);
         return;
     }
-    ESP_LOGI(TAG3, "Starting decoding process");
+    //ESP_LOGI(TAG3, "Starting decoding process");
+    ESP_LOGI(TAG3, "Starting MP3 playback on %s", file);
 
     
     HMP3Decoder myDecoder = MP3InitDecoder();
@@ -305,9 +320,9 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
     i2s_channel_enable(tx_handle);
 
     int count = 0;
-    int prevFreq = 44100;
-    volume = 0.1;
-    while (true) {
+    
+    //volume = 0.1;
+    while (count < 1000) {
         status = decode_mp3(myDecoder, f, &output, &mp3_data);
         size_t bytesToWrite = output.frame_count * output.fmt.channels * (output.fmt.bits_per_sample / 8);
 
@@ -319,34 +334,49 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
         }
         //printf("Avg Audio: %f, Avg Capacity: %d\n", averageDigitalAudio/((float)(output.samples_capacity_max)), output.samples_capacity_max);
         //averageDigitalAudio = 0;
-        // for (int i = 0; i < 20; i++) {
-        //     printf("%d ", my_buf[i]);
-        // }
-        // printf("\n");
-        
+        if (count % 100 == 0) {
+            ESP_LOGI(TAG3, "%d %d %d %d %d %d %d %d %d %d ", 
+                output.samples[0], 
+                output.samples[1], 
+                output.samples[2],
+                output.samples[3],
+                output.samples[4],
+                output.samples[5],
+                output.samples[6],
+                output.samples[7],
+                output.samples[8],
+                output.samples[9]
+            );
+            //printf("\n");
+        } 
+            
+        if (count == 0) {
+            ESP_LOGI(TAG3, "Freq: %d Hz, Channels: %d, Bit/Sample: %d", output.fmt.sample_rate, output.fmt.channels, output.fmt.bits_per_sample);
+        }
         if (output.fmt.sample_rate != prevFreq) {
             prevFreq = output.fmt.sample_rate;
             ESP_LOGI(TAG3, "Freq: %d Hz, Channels: %d, Bit/Sample: %d", output.fmt.sample_rate, output.fmt.channels, output.fmt.bits_per_sample);
-            if(!testReconfigI2S(output.fmt.sample_rate, 0, 0)) {
+            if(!testReconfigI2S(output.fmt.sample_rate, output.fmt.bits_per_sample, output.fmt.channels)) {
                 printf("Problem with file %s\n", file);
                 break;
              }
             i2s_channel_enable(tx_handle);
         }
         
-        if (count < 100) {
-            i2s_channel_write(tx_handle, (int16_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
-            //ESP_LOGI(TAG3, "int16 %d", count);
-        } else if (count < 200) {
-            i2s_channel_write(tx_handle, (int8_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
-            //ESP_LOGI(TAG3, "int8 %d", count);
+        i2s_channel_write(tx_handle, (int8_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
+        // if (count < 1000/2) {
+        //     i2s_channel_write(tx_handle, (int16_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
+        //     //ESP_LOGI(TAG3, "int16 %d", count);
+        // } else if (count < 2000/2) {
+        //     i2s_channel_write(tx_handle, (int8_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
+        //     //ESP_LOGI(TAG3, "int8 %d", count);
             
-        } else {
-            count = 0;
-            volume = 0;
-            i2s_channel_write(tx_handle, (int8_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
-            break;
-        }
+        // } else {
+        //     count = 0;
+        //     //volume = 0;
+        //     i2s_channel_write(tx_handle, (int8_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
+        //     break;
+        // }
         
         if (bytesToWrite != bytesWritten) {
             ESP_LOGW(TAG3, "Bytes written: %d/%d", bytesWritten, bytesToWrite);
@@ -356,7 +386,7 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
             break;
         }
         count++;
-        volume += 0.0001;
+        //volume += 0.0001;
     }
 
     // ESP_LOGI(TAG3, "File end");
