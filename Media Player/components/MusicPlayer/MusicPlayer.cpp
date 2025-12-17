@@ -25,7 +25,7 @@ uint32_t prevFreq = 48000;
 
 MusicPlayer::MusicPlayer() : 
     current_track(),
-    volume(0.2f),
+    volume(0.4f),
     is_playing(false),
     play_mode(0),
     tx_handle(NULL) {
@@ -238,38 +238,40 @@ bool MusicPlayer::testReconfigI2S(uint32_t freq, int bitsPerSample, int channels
 }
 
 void MusicPlayer::testMP3AudioI2S(const char *file) {
-    // I originally wanted to use minimp3 for decoding but here's a blog about someone testing it on STM32
-    // http://cmorgan.org/2023/10/05/mp3-decoding-on-embedded.html
-    // Performance on STM32 was limited, and despite ESP32S3 having dual core, there's a chance that minimp3
-    // won't get the results we're looking for, and such process to debug and optimize will take too much time
-    // Additionally, minimp3 supports NEON and SSE architectures extensions for ARM and x86 respectively
-    // ESP is Xtensa, so this support is limited.
-    // We'll need to search for another alternative. Checking out Helix MP3 for esp32
-    // https://github.com/chmorgan/esp-libhelix-mp3?tab=readme-ov-file
-    // Here's a forum related to our issue https://esp32.com/viewtopic.php?t=40413 
-    // Alternatively there's also the audio development framework
+    /* 
+    I originally wanted to use minimp3 for decoding but here's a blog about someone testing it on STM32
+    http://cmorgan.org/2023/10/05/mp3-decoding-on-embedded.html
+    Performance on STM32 was limited, and despite ESP32S3 having dual core, there's a chance that minimp3
+    won't get the results we're looking for, and such process to debug and optimize will take too much time
+    Additionally, minimp3 supports NEON and SSE architectures extensions for ARM and x86 respectively
+    ESP is Xtensa, so this support is limited.
+    We'll need to search for another alternative. Checking out Helix MP3 for esp32
+    https://github.com/chmorgan/esp-libhelix-mp3?tab=readme-ov-file
+    Here's a forum related to our issue https://esp32.com/viewtopic.php?t=40413 
+    Alternatively there's also the audio development framework
 
-    // esp-libhelix-mp3 is an extended version of libhelix-mp3 by chmorgan. The main code files in this
-    // librariy are mp3dec.h and mp3common.h, where the first is a high level code, and the latter low level
-    // chmorgan also made a library/project called audioPlayer where his high level code uses mp3dec.h, which
-    // is libhelix-mp. You can find that example here:  
-    // https://github.com/chmorgan/esp-audio-player/blob/main/test/audio_player_test.c
+    esp-libhelix-mp3 is an extended version of libhelix-mp3 by chmorgan. The main code files in this
+    librariy are mp3dec.h and mp3common.h, where the first is a high level code, and the latter low level
+    chmorgan also made a library/project called audioPlayer where his high level code uses mp3dec.h, which
+    is libhelix-mp. You can find that example here:  
+    https://github.com/chmorgan/esp-audio-player/blob/main/test/audio_player_test.c
     
-    // To install esp-libhelix-mp3 or libhelix-mp3 libraries, you need to git clone the repo into the
-    // components folder and activate it as a component use CMakeLists.txt
+    To install esp-libhelix-mp3 or libhelix-mp3 libraries, you need to git clone the repo into the
+    components folder and activate it as a component use CMakeLists.txt
 
-    // To use the higher level audioPLayer library that chmorgan made (audio_player.h), you need to open an
-    // ESP-IDF terminal and install using the command "idf.py add-dependency chmorgan/esp-audio-player"
+    To use the higher level audioPLayer library that chmorgan made (audio_player.h), you need to open an
+    ESP-IDF terminal and install using the command "idf.py add-dependency chmorgan/esp-audio-player"
 
-    // Upon building you can then use audio_player.h or audio_mp3.h, the latter being a wrapper for mp3dec.h
+    Upon building you can then use audio_player.h or audio_mp3.h, the latter being a wrapper for mp3dec.h
 
-    // The advanced development framework also has support for mp3 decoding found here:
-    // https://docs.espressif.com/projects/esp-adf/en/latest/api-reference/codecs/mp3_decoder.html
-    // But ADF is advanced high level abstract code - it does a lot of processes automatically, and wraps everything up using pipelines
-    // For our project, GPT considers it overkill to use ADF. Plus, ADF is harder to set up and uses a lot of memory
-    // It also leads me away from the low level learning I want. 
+    The advanced development framework also has support for mp3 decoding found here:
+    https://docs.espressif.com/projects/esp-adf/en/latest/api-reference/codecs/mp3_decoder.html
+    But ADF is advanced high level abstract code - it does a lot of processes automatically, and wraps everything up using pipelines
+    For our project, GPT considers it overkill to use ADF. Plus, ADF is harder to set up and uses a lot of memory
+    It also leads me away from the low level learning I want. 
 
-    // Also, esp-libhelix-mp3 uses a branch of libhelix-mp3 that is 8 years old. Maybe consider just using libhelix-mp3 alone
+    Also, esp-libhelix-mp3 uses a branch of libhelix-mp3 that is 8 years old. Maybe consider just using libhelix-mp3 alone
+    */
 
     FILE *f = fopen(file, "rb");
     if (f == nullptr) {
@@ -280,7 +282,7 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
     // is_mp3() seems to be inconsistent. Sometimes it will think a mp3 file is not an mp3, and sometimes it skips wav files?
     // Requires further testing to see under what conditions the function fails
     if (!is_mp3(f)) {
-        printf("NOT MP3 :: %s\n", file);
+        ESP_LOGW(TAG3, "The following file is not a MP3: %s", file);
         fclose(f);
         return;
     }
@@ -312,61 +314,61 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
     mp3_data.bytes_in_data_buf = 0; //size_t
     mp3_data.read_ptr = mp3_data.data_buf; //uint8_t*
     mp3_data.eof_reached = false;
-    
-    //int8_t *my_buf = static_cast<int8_t*>(malloc(output.samples_capacity_max));
-    //memset(my_buf, 0, mp3_data.data_buf_size);
 
-    //mp3_data.data_buf;
     DECODE_STATUS status = DECODE_STATUS_ERROR;
     size_t bytesWritten = 0;
-    size_t averageDigitalAudio = 0;
+    // size_t averageDigitalAudio = 0;
 
-    
     i2s_channel_enable(tx_handle);
 
     int count = 0;
     
-    //volume = 0.1;
-    while (true ) { //&& count < 2000
-        ESP_LOGI(TAG3, "NEW LOOP", status);
+    while (true && count < 3000) { //
+        // ESP_LOGI(TAG3, "NEW LOOP", status);
         // long time = esp_timer_get_time();
         status = decode_mp3(myDecoder, f, &output, &mp3_data);
+        if (status == DECODE_STATUS_NO_DATA_CONTINUE) {
+            ESP_LOGW(TAG3, "Something went wrong...");
+            break;
+        }
         // printf("----TOTAL DECODE TIME: %lld ms\n", esp_timer_get_time() - time);
         // time = esp_timer_get_time();
         size_t bytesToWrite = output.frame_count * output.fmt.channels * (output.fmt.bits_per_sample / 8);
-        //bytesToWrite = bytesToWrite*2;
 
-        //ESP_LOGI(TAG3, "Decode Status %d", status);
-
+        // Reduce audio volume
         for (int i = 0; i < output.samples_capacity_max; i++) {
             output.samples[i] = ((uint8_t) ((int8_t)(output.samples[i])*volume));
             //averageDigitalAudio += (int8_t) (output.samples[i]);
         }
         //printf("Avg Audio: %f, Avg Capacity: %d\n", averageDigitalAudio/((float)(output.samples_capacity_max)), output.samples_capacity_max);
         //averageDigitalAudio = 0;
-        if (count % 100 == 0) {
-            //printf("CPU frequency: %d MHz\n", esp_clk_cpu_freq() / 1000000);
-            ESP_LOGI(TAG3, "%d %d %d %d %d %d %d %d %d %d ", 
-                output.samples[0], 
-                output.samples[1], 
-                output.samples[2],
-                output.samples[3],
-                output.samples[4],
-                output.samples[5],
-                output.samples[6],
-                output.samples[7],
-                output.samples[8],
-                output.samples[9]
-            );
-            //printf("\n");
-        } 
-            
+
+        
+        // if (count % 100 == 0) {
+        //     ESP_LOGI(TAG3, "%d %d %d %d %d %d %d %d %d %d ", 
+        //         output.samples[0], 
+        //         output.samples[1], 
+        //         output.samples[2],
+        //         output.samples[3],
+        //         output.samples[4],
+        //         output.samples[5],
+        //         output.samples[6],
+        //         output.samples[7],
+        //         output.samples[8],
+        //         output.samples[9]
+        //     );
+        // } 
+        
+        // Print mp3 frame properties
         if (count == 0) {
             ESP_LOGI(TAG3, "Freq: %d Hz, Channels: %d, Bit/Sample: %d", output.fmt.sample_rate, output.fmt.channels, output.fmt.bits_per_sample);
+            count++;
         }
+
+        // Check if mp3 sample_rate matches I2S
         if (output.fmt.sample_rate != prevFreq) {
             prevFreq = output.fmt.sample_rate;
-            ESP_LOGI(TAG3, "Freq: %d Hz, Channels: %d, Bit/Sample: %d", output.fmt.sample_rate, output.fmt.channels, output.fmt.bits_per_sample);
+            //ESP_LOGI(TAG3, "Freq: %d Hz, Channels: %d, Bit/Sample: %d", output.fmt.sample_rate, output.fmt.channels, output.fmt.bits_per_sample);
             if(!testReconfigI2S(output.fmt.sample_rate, output.fmt.bits_per_sample, output.fmt.channels)) {
                 printf("Problem with file %s\n", file);
                 break;
@@ -381,46 +383,25 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
 
         // printf("----TOTAL I2S WRITE TIME: %lld ms\n", esp_timer_get_time() - time);
         // time = esp_timer_get_time();
-        // if (count < 1000/2) {
-        //     i2s_channel_write(tx_handle, (int16_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
-        //     //ESP_LOGI(TAG3, "int16 %d", count);
-        // } else if (count < 2000/2) {
-        //     i2s_channel_write(tx_handle, (int8_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
-        //     //ESP_LOGI(TAG3, "int8 %d", count);
-            
-        // } else {
-        //     count = 0;
-        //     //volume = 0;
-        //     i2s_channel_write(tx_handle, (int8_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
-        //     break;
-        // }
         
+
         if (bytesToWrite != bytesWritten) {
             ESP_LOGW(TAG3, "Bytes written: %d/%d", bytesWritten, bytesToWrite);
         }
+        
         if (status != DECODE_STATUS_CONTINUE && status != DECODE_STATUS_NO_DATA_CONTINUE) {
             ESP_LOGI(TAG3, "End of song reached");
             break;
         }
         count++;
-        //volume += 0.0001;
     }
-
-    // ESP_LOGI(TAG3, "File end");
-    
-
 
     free(output.samples);
     free(mp3_data.data_buf);
     MP3FreeDecoder(myDecoder);
 
-    
     i2s_channel_disable(tx_handle);
-
     fclose(f);
-
-
-
 }
 
 void MusicPlayer::testCloseI2S() {

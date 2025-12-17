@@ -57,7 +57,7 @@ DECODE_STATUS decode_mp3(HMP3Decoder mp3_decoder, FILE *fp, decode_data *pData, 
     size_t unread_bytes = pInstance->bytes_in_data_buf - (pInstance->read_ptr - pInstance->data_buf);
 
     /* somewhat arbitrary trigger to refill buffer - should always be enough for a full frame */
-    long time = esp_timer_get_time();
+    //long time = esp_timer_get_time();
 
     if (unread_bytes < 1.25 * MAINBUF_SIZE && !pInstance->eof_reached) {
         uint8_t *write_ptr = pInstance->data_buf + unread_bytes;
@@ -88,8 +88,8 @@ DECODE_STATUS decode_mp3(HMP3Decoder mp3_decoder, FILE *fp, decode_data *pData, 
         return DECODE_STATUS_DONE;
     }
 
-    printf("Refill Input Buffer: %lld ms\n", esp_timer_get_time() - time);
-    time = esp_timer_get_time();
+    // printf("Refill Input Buffer: %lld ms\n", esp_timer_get_time() - time);
+    // time = esp_timer_get_time();
 
     /* Find MP3 sync word from read buffer */
     int offset = MP3FindSyncWord(pInstance->read_ptr, unread_bytes);

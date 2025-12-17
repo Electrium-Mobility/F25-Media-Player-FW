@@ -121,7 +121,8 @@ void SD::updateFileListFromCard(const char *path) {
     // already set as the root directory (in this case esp_vfs_fats set it as "/sdcard"). It's just treating the sd card 
     // dir as base so it's trying to search for another "/sdcard" folder inside the real "/sdcard" dir.
     // Note that the POSIX layer does not know /sdcard is root!
-    ESP_LOGI(TAG, "Opening Directory ErrNo: %d", res);
+    
+    //ESP_LOGI(TAG, "Opening Directory ErrNo: %d", res);
     if (res != 0) {
         ESP_LOGE(TAG, "Failed to open path. Path probably doesn't exist");
     }
@@ -163,7 +164,7 @@ void SD::updateFileListFromCard(const char *path) {
         ESP_LOGI(TAG, "Something went unexpected reading a file name! FRESULT: %d", res);
     }
     res = f_closedir(&myDirectory);
-    ESP_LOGI(TAG, "Closing Directory ErrNo: %d", res);
+    //ESP_LOGI(TAG, "Closing Directory ErrNo: %d", res);
     
     currentFileIndex = 0;
     currentFile = fileList[currentFileIndex];
@@ -208,7 +209,7 @@ bool SD::sortFilesByName() {
         int lastIndex = upper;
         for (int i = upper; i > 0; i--) {
             if (fileList[upper] < fileList[i-1]) {
-                ESP_LOGI(TAG, "%s < %s", fileList[upper], fileList[i-1]);
+                //ESP_LOGI(TAG, "%s < %s", fileList[upper], fileList[i-1]);
                 fileList[i] = fileList[i-1];
                 fileDate[i] = fileDate[i-1];
                 lastIndex = i-1;
@@ -337,7 +338,7 @@ void SD::decrementCurrentFile() {
         currentFileIndex--;
     }
     currentFile = fileList[currentFileIndex];
-    ESP_LOGI(TAG, "currentFileIndex: %d, currentFile: %s", currentFileIndex, currentFile);
+    //ESP_LOGI(TAG, "currentFileIndex: %d, currentFile: %s", currentFileIndex, currentFile);
 }
 
 void SD::zeroCurrentFile() {
