@@ -1,6 +1,7 @@
 #include <string.h>
 #include "audio_log.h"
 #include "audio_mp3.h"
+#include "esp_timer.h"
 
 static const char *TAG = "mp3";
 
@@ -56,6 +57,8 @@ DECODE_STATUS decode_mp3(HMP3Decoder mp3_decoder, FILE *fp, decode_data *pData, 
     size_t unread_bytes = pInstance->bytes_in_data_buf - (pInstance->read_ptr - pInstance->data_buf);
 
     /* somewhat arbitrary trigger to refill buffer - should always be enough for a full frame */
+    long time = esp_timer_get_time();
+
     if (unread_bytes < 1.25 * MAINBUF_SIZE && !pInstance->eof_reached) {
         uint8_t *write_ptr = pInstance->data_buf + unread_bytes;
         size_t free_space = pInstance->data_buf_size - unread_bytes;
@@ -85,19 +88,23 @@ DECODE_STATUS decode_mp3(HMP3Decoder mp3_decoder, FILE *fp, decode_data *pData, 
         return DECODE_STATUS_DONE;
     }
 
+    printf("Refill Input Buffer: %lld ms\n", esp_timer_get_time() - time);
+    time = esp_timer_get_time();
+
     /* Find MP3 sync word from read buffer */
     int offset = MP3FindSyncWord(pInstance->read_ptr, unread_bytes);
 
     LOGI_2("unread %d, total %d, offset 0x%x(%d)",
-            unread_bytes, pInstance->bytes_in_data_buf, offset, offset);
+        unread_bytes, pInstance->bytes_in_data_buf, offset, offset);
 
     if (offset >= 0) {
         COMPILE_3(int starting_unread_bytes = unread_bytes);
         uint8_t *read_ptr = pInstance->read_ptr + offset; /*!< Data start point */
         unread_bytes -= offset;
         LOGI_3("read 0x%p, unread %d", read_ptr, unread_bytes);
-        int mp3_dec_err = MP3Decode(mp3_decoder, &read_ptr, (int*)&unread_bytes, reinterpret_cast<int16_t *>(pData->samples), 
-0);
+        // reinterpret_cast is like static_cast where they both happen in compile time, but reinterpret_cast ignores the safety checks for type compatibility
+        // i.e. using static_cast should cause a compile error saying you cannot cast uint8_t to int16_t
+        int mp3_dec_err = MP3Decode(mp3_decoder, &read_ptr, (int*)&unread_bytes, reinterpret_cast<int16_t *>(pData->samples), 0);
 
         pInstance->read_ptr = read_ptr;
 

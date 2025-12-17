@@ -13,14 +13,19 @@
 #include "mp3dec.h"
 #include "audio_player.h"
 #include "audio_mp3.h"
+#include "esp_timer.h"
+
+#include "esp_system.h"
+#include <stdio.h>
 
 static const char *TAG3 = "MusicPlayer";
 #define BUFFER_SIZE 2048
-int prevFreq = 44100;
+uint32_t prevFreq = 48000;
+
 
 MusicPlayer::MusicPlayer() : 
     current_track(),
-    volume(0.25f),
+    volume(0.2f),
     is_playing(false),
     play_mode(0),
     tx_handle(NULL) {
@@ -108,7 +113,7 @@ void MusicPlayer::testInitI2S() {
     * These two helper macros are defined in `i2s_std.h` which can only be used in STD mode.
     * They can help to specify the slot and clock configurations for initialization or updating */
     i2s_std_config_t std_cfg = {
-        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(44100),
+        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(prevFreq),
         // It's Going Down Now uses 48khz, Breath of the Wild Main Theme uses 44.1khz
         // THe freq and bit width should be encoded in the mp3 metadata 
         .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
@@ -160,7 +165,7 @@ void MusicPlayer::testWavAudioI2S(const char *file) {
     size_t elements = fread(src_buf, sizeof(int8_t), BUFFER_SIZE, f);
 
     size_t count = 0;
-    while(elements > 0 && count < 2000) {
+    while(elements > 0 && count < 4000) { //
         if (count % 200 == 0) {
             ESP_LOGI(TAG3, "%d %d %d %d %d %d %d %d %d %d ", 
                 src_buf[0], 
@@ -288,7 +293,7 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
     // pure audio samples, which should come in signed form. THe output seems to be uint8 as well, but some how
     // we need to make sure the output to I2S is signed
     decode_data output;
-    output.samples_capacity = 2 * 2 * 576; //size_t
+    output.samples_capacity = 2 * 2 * 576; // 2 * 2 * 576 as set by example
     output.samples_capacity_max = output.samples_capacity*2; ///size_t
     output.samples = static_cast<uint8_t*>(malloc(output.samples_capacity_max)); //uint8_t*
     memset(output.samples, 0, output.samples_capacity_max);
@@ -301,7 +306,7 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
     };
     
     mp3_instance mp3_data;
-    mp3_data.data_buf_size = 1940 * 3; //size_t
+    mp3_data.data_buf_size = 1940 * 3; // 1940 * 3 previously set by example
     mp3_data.data_buf = static_cast<uint8_t*>(malloc(mp3_data.data_buf_size)); //uint8_t*
     memset(mp3_data.data_buf, 0, mp3_data.data_buf_size);
     mp3_data.bytes_in_data_buf = 0; //size_t
@@ -312,7 +317,7 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
     //memset(my_buf, 0, mp3_data.data_buf_size);
 
     //mp3_data.data_buf;
-    DECODE_STATUS status;
+    DECODE_STATUS status = DECODE_STATUS_ERROR;
     size_t bytesWritten = 0;
     size_t averageDigitalAudio = 0;
 
@@ -322,9 +327,14 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
     int count = 0;
     
     //volume = 0.1;
-    while (count < 1000) {
+    while (true ) { //&& count < 2000
+        ESP_LOGI(TAG3, "NEW LOOP", status);
+        // long time = esp_timer_get_time();
         status = decode_mp3(myDecoder, f, &output, &mp3_data);
+        // printf("----TOTAL DECODE TIME: %lld ms\n", esp_timer_get_time() - time);
+        // time = esp_timer_get_time();
         size_t bytesToWrite = output.frame_count * output.fmt.channels * (output.fmt.bits_per_sample / 8);
+        //bytesToWrite = bytesToWrite*2;
 
         //ESP_LOGI(TAG3, "Decode Status %d", status);
 
@@ -335,6 +345,7 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
         //printf("Avg Audio: %f, Avg Capacity: %d\n", averageDigitalAudio/((float)(output.samples_capacity_max)), output.samples_capacity_max);
         //averageDigitalAudio = 0;
         if (count % 100 == 0) {
+            //printf("CPU frequency: %d MHz\n", esp_clk_cpu_freq() / 1000000);
             ESP_LOGI(TAG3, "%d %d %d %d %d %d %d %d %d %d ", 
                 output.samples[0], 
                 output.samples[1], 
@@ -363,7 +374,13 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
             i2s_channel_enable(tx_handle);
         }
         
+        // printf("----TOTAL PRE-I2S CHECK TIME: %lld ms\n", esp_timer_get_time() - time);
+        // time = esp_timer_get_time();
+
         i2s_channel_write(tx_handle, (int8_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
+
+        // printf("----TOTAL I2S WRITE TIME: %lld ms\n", esp_timer_get_time() - time);
+        // time = esp_timer_get_time();
         // if (count < 1000/2) {
         //     i2s_channel_write(tx_handle, (int16_t*) (output.samples), bytesToWrite*sizeof(int8_t), &bytesWritten, 100);
         //     //ESP_LOGI(TAG3, "int16 %d", count);

@@ -7,8 +7,10 @@
 //extern "C" {
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
 // You need to import FreeRTOS before task
 //}
+
 
 #define TAG "main"
 #define TESTING_MODE 1
@@ -16,6 +18,7 @@
 #if TESTING_MODE
 #include "SDCardManager.h"
 #include "MusicPlayer.h"
+#include "esp_timer.h"
 #endif
 // --------------------------------------------------------------------------
 #ifdef __cplusplus
@@ -28,9 +31,18 @@ int app_main();
 }
 #endif
 // --------------------------------------------------------------------------
-int SONG = 3;
+int SONG = 6;
+
+void playMP3Thread(void * pvParameters ) {
+    MusicPlayer mp = MusicPlayer{};
+    mp.testInitI2S();
+    while (true) mp.testMP3AudioI2S("/sdcard/Full Moon Full Life - Persona 3 Reload Original Soundtrack.mp3");
+    
+}
 
 void alternateTask(void) {
+    esp_err_t init = esp_timer_early_init();
+
     SDCardManager cardModule = SDCardManager(false);
     if (!cardModule.mountSD()) {
         return;
@@ -42,7 +54,7 @@ void alternateTask(void) {
     //ESP_LOGI(TAG, "Printing Updated list");
     //cardModule.showFileList();
     //ESP_LOGI(TAG, "Showing fileLists with explicit path");
-    cardModule.showFileList("/");
+    //cardModule.showFileList("/");
     // cardModule.showFileList("My Folder");
     // cardModule.showFileList("Error");
     printf("Current File: %s", cardModule.getAbsCurrentFilePath().c_str());
@@ -76,7 +88,11 @@ void alternateTask(void) {
     // }
 
     //mp.testCloseI2S();
+
+
+
     for (;SONG > -1; SONG--) {
+        //SONG = 6;
         printf("Free mem: %d\n", heap_caps_get_free_size(8));
         mp.volume = 0.25;
         if (SONG == 0) {
@@ -88,14 +104,26 @@ void alternateTask(void) {
         } else if (SONG == 2) {
             mp.volume = 0.1;
             mp.testMP3AudioI2S("/sdcard/It's Going Down Now - Persona 3 Reload Original Soundtrack.mp3");
-            mp.testWavAudioI2S("/sdcard/Its Going Down Now - Persona 3 Reload Original Soundtrack.wav");
-        } else {
+            mp.testWavAudioI2S("/sdcard/It's Going Down Now - Persona 3 Reload Original Soundtrack.wav");
+        } else if (SONG == 3) {
             mp.testMP3AudioI2S("/sdcard/Pokemon XY Anime OST_ BW Title Screen(XY Ver).mp3");
             mp.testWavAudioI2S("/sdcard/Pokemon XY Anime OST_ BW Title Screen(XY Ver).wav");
+        } else if (SONG == 4) {
+            mp.testMP3AudioI2S("/sdcard/Black Tar - Xenoblade Chronicles X.mp3");
+            mp.testWavAudioI2S("/sdcard/Black Tar - Xenoblade Chronicles X.wav");
+        } else if (SONG == 5) {
+            //mp.testMP3AudioI2S("/sdcard/Luna Haruna - Overfly.mp3");
+            //mp.testWavAudioI2S("/sdcard/Luna Haruna - Overfly.wav");   
+        } else {
+            mp.testMP3AudioI2S("/sdcard/Full Moon Full Life - Persona 3 Reload Original Soundtrack.mp3");
+            mp.testWavAudioI2S("/sdcard/Full Moon Full Life - Persona 3 Reload Original Soundtrack.wav");
         }
     }
+    // TaskHandle_t xHandle = NULL;
+    // xTaskCreate(playMP3Thread, "Play Mp3", 4096, NULL, 1, &xHandle);
+    // configASSERT( xHandle );
 
-    mp.testCloseI2S();
+    //mp.testCloseI2S();
 
     // You need to use absolute paths here
     
