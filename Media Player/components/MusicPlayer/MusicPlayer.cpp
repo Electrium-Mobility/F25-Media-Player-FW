@@ -170,6 +170,7 @@ void MusicPlayer::testInitI2S() {
  * @param file a c-style string being the absolute path to a wav file
  */
 void MusicPlayer::testWavAudioI2S(const char *file) {
+
     FILE *f = fopen(file, "rb"); // Treat WAV file as is, no character conversion
     if (f == nullptr) {
         ESP_LOGE(TAG3, "Failed to open file: %s", file);
@@ -193,6 +194,7 @@ void MusicPlayer::testWavAudioI2S(const char *file) {
     size_t elements = fread(src_buf, sizeof(int8_t), BUFFER_SIZE, f);
 
     size_t count = 0;
+    i2c_master_transmit(dev_handle, myWM8731.addr_9E_daiON, 2, 100);
     while(elements > 0 && count < 2000) { //
         if (count % 200 == 0) {
             ESP_LOGI(TAG3, "%d %d %d %d %d %d %d %d %d %d ", 
@@ -240,6 +242,7 @@ void MusicPlayer::testWavAudioI2S(const char *file) {
     printf("Song End\n");
 
     i2s_channel_disable(tx_handle);
+    i2c_master_transmit(dev_handle, myWM8731.addr_9E_daiOFF, 2, 100);
     
     /* Clean up resources */
     if (src_buf != nullptr) {
@@ -250,6 +253,9 @@ void MusicPlayer::testWavAudioI2S(const char *file) {
     }
 }
 
+/**
+ * TODO: FIGURE OUT WHY i2c is BLOCKING FOR SO LONG!
+ */
 bool MusicPlayer::testReconfigI2S(uint32_t freq, int bitsPerSample, int channels) {
     i2s_channel_disable(tx_handle);
     
@@ -260,11 +266,20 @@ bool MusicPlayer::testReconfigI2S(uint32_t freq, int bitsPerSample, int channels
     }
     i2s_std_clk_config_t config = I2S_STD_CLK_DEFAULT_CONFIG(freq);
     i2s_channel_reconfig_std_clock(tx_handle, &config);
+    ESP_LOGI(TAG3, "Probing WM8731");
+    ESP_LOGI(TAG3, "Probe Results: %d", i2c_master_probe(bus_handle, (uint16_t) wm8731Addr, 100));
+    ESP_LOGI(TAG3, "Deactivating DAI");
+    i2c_master_transmit(dev_handle, myWM8731.addr_9E_daiOFF, 2, 100);
     if (freq == 44100) {
+        ESP_LOGI(TAG3, "Sample Rate is 44100");
         i2c_master_transmit(dev_handle, myWM8731.addr_8E_44k1, 2, 100);
+        ESP_LOGI(TAG3, "I2C written");
     } else if (freq == 48000) {
+        ESP_LOGI(TAG3, "Sample Rate is 48000");
         i2c_master_transmit(dev_handle, myWM8731.addr_8E_48k, 2, 100);
+        ESP_LOGI(TAG3, "I2C written");
     }
+    i2c_master_transmit(dev_handle, myWM8731.addr_9E_daiON, 2, 100);
     //i2c_master_transmit(dev_handle, myWM8731.addr_8E_48k, 2, 100);
     ESP_LOGI(TAG3, "Channel Reconfig'ed");
     return true;
@@ -272,6 +287,7 @@ bool MusicPlayer::testReconfigI2S(uint32_t freq, int bitsPerSample, int channels
 }
 
 void MusicPlayer::testMP3AudioI2S(const char *file) {
+    
     /* 
     I originally wanted to use minimp3 for decoding but here's a blog about someone testing it on STM32
     http://cmorgan.org/2023/10/05/mp3-decoding-on-embedded.html
@@ -354,6 +370,7 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
     // size_t averageDigitalAudio = 0;
 
     i2s_channel_enable(tx_handle);
+    i2c_master_transmit(dev_handle, myWM8731.addr_9E_daiON, 2, 100);
 
     int count = 0;
     
@@ -401,8 +418,9 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
 
         // Check if mp3 sample_rate matches I2S
         if (output.fmt.sample_rate != prevFreq) {
+
             prevFreq = output.fmt.sample_rate;
-            //ESP_LOGI(TAG3, "Freq: %d Hz, Channels: %d, Bit/Sample: %d", output.fmt.sample_rate, output.fmt.channels, output.fmt.bits_per_sample);
+            ESP_LOGI(TAG3, "Entered if statement");
             if(!testReconfigI2S(output.fmt.sample_rate, output.fmt.bits_per_sample, output.fmt.channels)) {
                 printf("Problem with file %s\n", file);
                 break;
@@ -430,10 +448,13 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
         count++;
     }
 
+    
+
     free(output.samples);
     free(mp3_data.data_buf);
     MP3FreeDecoder(myDecoder);
 
+    i2c_master_transmit(dev_handle, myWM8731.addr_9E_daiOFF, 2, 100);
     i2s_channel_disable(tx_handle);
     fclose(f);
 }
@@ -454,12 +475,12 @@ void MusicPlayer::testRunI2C() {
         .glitch_ignore_cnt = 7
     };
 
-    i2c_master_bus_handle_t bus_handle;
+    //i2c_master_bus_handle_t bus_handle;
     ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_mst_config, &bus_handle));
 
     i2c_device_config_t dev_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address = 0b0011010,
+        .device_address = wm8731Addr,
         .scl_speed_hz = 100000,
     };
 
@@ -484,8 +505,16 @@ void MusicPlayer::testRunI2C() {
     i2c_master_transmit(dev_handle, myWM8731.addr_5E_44k1, 2, 100);
     i2c_master_transmit(dev_handle, myWM8731.addr_7E, 2, 100);
     i2c_master_transmit(dev_handle, myWM8731.addr_8E_44k1, 2, 100);
-    i2c_master_transmit(dev_handle, myWM8731.addr_9E, 2, 100);
+    i2c_master_transmit(dev_handle, myWM8731.addr_9E_daiON, 2, 100);
 
     //i2c_master_transmit(dev_handle, myWM8731.addr_0E, 4, 100);
+    ESP_LOGI(TAG3, "Probe Results: %d", i2c_master_probe(bus_handle, (uint16_t) wm8731Addr, 100));
 
+}
+
+void MusicPlayer::testCloseI2C() {
+    uint8_t d[2] = {0x06 << 1, 0b01100111};
+    uint8_t d2[2] = {0x03 << 1, 0b00000000};
+    i2c_master_transmit(dev_handle, d, 2, 100);
+    //i2c_master_transmit(dev_handle, d2, 2, 100);
 }

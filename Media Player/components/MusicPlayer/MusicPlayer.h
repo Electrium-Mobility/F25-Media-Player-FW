@@ -50,7 +50,8 @@ struct WM8731RegisterCustom {
     uint8_t addr_7E[2] =        {0x07 << 1, 0b00000010};
     uint8_t addr_8E_44k1[2] =   {0x08 << 1, 0b00100000};
     uint8_t addr_8E_48k[2] =    {0x08 << 1, 0b00000000};
-    uint8_t addr_9E[2] =        {0x09 << 1, 0b00000001};
+    uint8_t addr_9E_daiON[2] =  {0x09 << 1, 0b00000001};
+    uint8_t addr_9E_daiOFF[2] = {0x09 << 1, 0b00000000};
     uint8_t addr_FE[2] =        {0x0F << 1, 0b00000000}; // Reset
 };
 
@@ -63,6 +64,8 @@ public:
     int play_mode; /* Play mode enum (normal, shuffle, repeat). */
     i2s_chan_handle_t tx_handle;
     i2c_master_dev_handle_t dev_handle;
+    i2c_master_bus_handle_t bus_handle;
+    uint8_t wm8731Addr = 0b0011010;
 
     /* API */
     MusicPlayer();
@@ -82,6 +85,7 @@ public:
     void testInitI2S();
     void testCloseI2S();
     void testRunI2C();
+    void testCloseI2C();
 };
 #ifdef __cplusplus
 }

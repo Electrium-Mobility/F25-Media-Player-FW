@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "esp_log.h"
 #include <sys/unistd.h>
+#include <driver/i2c_master.h>
 //extern "C" {
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -50,16 +51,21 @@ void testCompareWavMP3(void) {
     }
     MusicPlayer mp = MusicPlayer{};
     mp.testInitI2S();
+    mp.testRunI2C();
     for (;SONG > -1; SONG--) {
         //SONG = 6;
         printf("Free mem: %d\n", heap_caps_get_free_size(8));
         //mp.volume = 0.25;
-        if (SONG == 0) {
+        if (SONG == 5) {
             mp.testMP3AudioI2S("/sdcard/440Hz.mp3");
             mp.testWavAudioI2S("/sdcard/440Hz.wav");     
-        } else if (SONG == 1) {
+        } else if (SONG == 6) {
+            break;
             mp.testMP3AudioI2S("/sdcard/Breath of the Wild (Main Theme) - The Legend of Zelda Breath of the Wild Soundtrack.mp3");
+            ESP_LOGI(TAG, "Waiting 5s");
+            vTaskDelay(pdMS_TO_TICKS(5000));
             mp.testWavAudioI2S("/sdcard/Breath of the Wild (Main Theme) - The Legend of Zelda Breath of the Wild Soundtrack.wav");
+            break;
         } else if (SONG == 2) {
             mp.volume = 0.1;
             mp.testMP3AudioI2S("/sdcard/It's Going Down Now - Persona 3 Reload Original Soundtrack.mp3");
@@ -70,7 +76,7 @@ void testCompareWavMP3(void) {
         } else if (SONG == 4) {
             mp.testMP3AudioI2S("/sdcard/Black Tar - Xenoblade Chronicles X.mp3");
             mp.testWavAudioI2S("/sdcard/Black Tar - Xenoblade Chronicles X.wav");
-        } else if (SONG == 5) {
+        } else if (SONG == 1) {
             mp.testMP3AudioI2S("/sdcard/Luna Haruna - Overfly.mp3");
             mp.testWavAudioI2S("/sdcard/Luna Haruna - Overfly.wav");   
         } else {
@@ -78,7 +84,9 @@ void testCompareWavMP3(void) {
             mp.testWavAudioI2S("/sdcard/Full Moon Full Life - Persona 3 Reload Original Soundtrack.wav");
         }
     }
+
     mp.testCloseI2S();
+    mp.testCloseI2C();
 }
 
 void testBasicPlayback(void) {
