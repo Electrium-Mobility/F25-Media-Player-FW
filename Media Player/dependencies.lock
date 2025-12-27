@@ -23,6 +23,6 @@ direct_dependencies:
 - chmorgan/esp-audio-player
 - chmorgan/esp-libhelix-mp3
 - idf
-manifest_hash: 4054dc7ad2e4819722676bd9c9754c378a93b1c15b390b29101256f27f4a5f3c
+manifest_hash: 2754c070a2e70a4d90b2261cfa4c390dc24917227309173b7356ef67071abd29
 target: esp32s3
 version: 2.0.0

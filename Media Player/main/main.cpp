@@ -15,6 +15,7 @@
 #define TAG "main"
 #define TESTING_MODE 1
 
+
 #if TESTING_MODE
 #include "SDCardManager.h"
 #include "MusicPlayer.h"
@@ -40,6 +41,8 @@ void testPlayMP3Thread(void * pvParameters ) {
     
 }
 
+
+
 void testCompareWavMP3(void) {
     SDCardManager cardModule = SDCardManager(false);
     if (!cardModule.mountSD()) {
@@ -50,7 +53,7 @@ void testCompareWavMP3(void) {
     for (;SONG > -1; SONG--) {
         //SONG = 6;
         printf("Free mem: %d\n", heap_caps_get_free_size(8));
-        mp.volume = 0.25;
+        //mp.volume = 0.25;
         if (SONG == 0) {
             mp.testMP3AudioI2S("/sdcard/440Hz.mp3");
             mp.testWavAudioI2S("/sdcard/440Hz.wav");     
@@ -68,8 +71,8 @@ void testCompareWavMP3(void) {
             mp.testMP3AudioI2S("/sdcard/Black Tar - Xenoblade Chronicles X.mp3");
             mp.testWavAudioI2S("/sdcard/Black Tar - Xenoblade Chronicles X.wav");
         } else if (SONG == 5) {
-            //mp.testMP3AudioI2S("/sdcard/Luna Haruna - Overfly.mp3");
-            //mp.testWavAudioI2S("/sdcard/Luna Haruna - Overfly.wav");   
+            mp.testMP3AudioI2S("/sdcard/Luna Haruna - Overfly.mp3");
+            mp.testWavAudioI2S("/sdcard/Luna Haruna - Overfly.wav");   
         } else {
             mp.testMP3AudioI2S("/sdcard/Full Moon Full Life - Persona 3 Reload Original Soundtrack.mp3");
             mp.testWavAudioI2S("/sdcard/Full Moon Full Life - Persona 3 Reload Original Soundtrack.wav");
@@ -79,6 +82,7 @@ void testCompareWavMP3(void) {
 }
 
 void testBasicPlayback(void) {
+    vTaskDelay(pdMS_TO_TICKS(1000));
     esp_err_t init = esp_timer_early_init();
     SDCardManager cardModule = SDCardManager(false);
     if (!cardModule.mountSD()) {
@@ -90,8 +94,11 @@ void testBasicPlayback(void) {
     printf("Current File: %s\n", cardModule.getAbsCurrentFilePath().c_str());
     MusicPlayer mp = MusicPlayer{};
     mp.testInitI2S();
+    ESP_LOGI(TAG, "Setting I2C...");
+    mp.testRunI2C();
 
-    //mp.testMP3AudioI2S("/sdcard/Elebit Music - Elebit Mischief.mp3");
+    //mp.testMP3AudioI2S("/sdcard/Black Tar - Xenoblade Chronicles X.mp3");
+    //mp.testWavAudioI2S("/sdcard/Black Tar - Xenoblade Chronicles X.wav");
 
     while(cardModule.currentFileIndex < cardModule.fileList.size()) {
         // You need to use absolute paths here
@@ -115,7 +122,8 @@ int app_main(void)
 {
     printf("--------------------------------------------------------------\n");
     if (TESTING_MODE) {
-        testBasicPlayback();
+        //testBasicPlayback();
+        testCompareWavMP3();
     }
     return 0;
 }

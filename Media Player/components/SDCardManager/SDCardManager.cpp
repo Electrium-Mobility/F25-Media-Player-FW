@@ -9,6 +9,8 @@
 #include <dirent.h>
 #include <sys/errno.h>
 
+
+
 #define MOUNT_POINT "/sdcard"
 #define TAG "SDCardManager"
 #define MAX_STR_LEN 276
@@ -16,6 +18,7 @@
 #define ASCII_LOWCASE_H 122 // z
 #define ASCII_UPCASE_L 65 // A
 #define ASCII_UPCASE_H 90 // Z
+#define USING_CUSTOM_BOARD
 
 using SD = SDCardManager;
 
@@ -55,7 +58,17 @@ bool SD::mountSD() {
     // a gpio_num_t type. In C++, it will complain because 1 is an integer. Note that it will also
     // complain about other pins that you won't be using either because it's picky like that!
     // 
-    slotConfig.width = 1;
+    slotConfig.width = 4;
+#ifdef USING_CUSTOM_BOARD
+    slotConfig.d0 = GPIO_NUM_40;
+    slotConfig.d1 = GPIO_NUM_39;
+    slotConfig.d2 = GPIO_NUM_1;
+    slotConfig.d3 = GPIO_NUM_2;
+
+    slotConfig.clk = GPIO_NUM_41;
+    slotConfig.cmd = GPIO_NUM_42;
+    slotConfig.cd = GPIO_NUM_38;
+#endif
     // Make sure you define this because in default config it is set to 0????
     ESP_LOGI(TAG, "Set SD bus width to 1");
     
@@ -73,6 +86,10 @@ bool SD::mountSD() {
 
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Mount failed: %d", ret);
+        // 261 means 0x105, requested resource not found (only when card detect pin is set)
+        // 263 means 0x107, operation time out (when cd is not set)
+        // 0x105 error has higher priority than 0x107, meaning there's a difference when you're streaming music
+        // but sd card stopped responding and it's either not plugged in or protocol can't reach card
         return false;
     }
 
