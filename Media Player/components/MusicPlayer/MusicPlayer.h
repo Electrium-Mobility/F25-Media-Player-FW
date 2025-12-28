@@ -47,7 +47,7 @@ struct WM8731RegisterCustom {
     uint8_t addr_5E_44k1[2] =   {0x05 << 1, 0b00010100};
     uint8_t addr_5E_48k[2] =    {0x05 << 1, 0b00010110}; 
     uint8_t addr_6E[2] =        {0x06 << 1, 0b01100111}; // Power Down Toggle
-    uint8_t addr_7E[2] =        {0x07 << 1, 0b00000010};
+    uint8_t addr_7E[2] =        {0x07 << 1, 0b00000001};
     uint8_t addr_8E_44k1[2] =   {0x08 << 1, 0b00100000};
     uint8_t addr_8E_48k[2] =    {0x08 << 1, 0b00000000};
     uint8_t addr_9E_daiON[2] =  {0x09 << 1, 0b00000001};

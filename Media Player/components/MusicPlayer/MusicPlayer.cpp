@@ -122,6 +122,9 @@ void MusicPlayer::testInitI2S() {
         // It's Going Down Now uses 48khz, Breath of the Wild Main Theme uses 44.1khz
         // THe freq and bit width should be encoded in the mp3 metadata 
         .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
+
+        // NOTE, the I2S mode on the WM8731 is probably philips mode
+        //.slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
         .gpio_cfg = {
             .mclk = GPIO_NUM_5, // How can you confirm that the master clock is outputting?
             .bclk = GPIO_NUM_15,
@@ -129,9 +132,9 @@ void MusicPlayer::testInitI2S() {
             .dout = GPIO_NUM_16,
             .din = I2S_GPIO_UNUSED,
             .invert_flags = {
-                .mclk_inv = false,
+                .mclk_inv = true,
                 .bclk_inv = false,
-                .ws_inv = false,
+                .ws_inv = true,
             },
         },
     };
@@ -505,7 +508,7 @@ void MusicPlayer::testRunI2C() {
     i2c_master_transmit(dev_handle, myWM8731.addr_5E_44k1, 2, 100);
     i2c_master_transmit(dev_handle, myWM8731.addr_7E, 2, 100);
     i2c_master_transmit(dev_handle, myWM8731.addr_8E_44k1, 2, 100);
-    i2c_master_transmit(dev_handle, myWM8731.addr_9E_daiON, 2, 100);
+    i2c_master_transmit(dev_handle, myWM8731.addr_9E_daiOFF, 2, 100);
 
     //i2c_master_transmit(dev_handle, myWM8731.addr_0E, 4, 100);
     ESP_LOGI(TAG3, "Probe Results: %d", i2c_master_probe(bus_handle, (uint16_t) wm8731Addr, 100));
@@ -514,7 +517,7 @@ void MusicPlayer::testRunI2C() {
 
 void MusicPlayer::testCloseI2C() {
     uint8_t d[2] = {0x06 << 1, 0b01100111};
-    uint8_t d2[2] = {0x03 << 1, 0b00000000};
+    uint8_t d2[2] = {0x03 << 1, 0b00000000};                    
     i2c_master_transmit(dev_handle, d, 2, 100);
     //i2c_master_transmit(dev_handle, d2, 2, 100);
 }

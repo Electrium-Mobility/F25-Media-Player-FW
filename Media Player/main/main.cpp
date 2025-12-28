@@ -60,7 +60,7 @@ void testCompareWavMP3(void) {
             mp.testMP3AudioI2S("/sdcard/440Hz.mp3");
             mp.testWavAudioI2S("/sdcard/440Hz.wav");     
         } else if (SONG == 6) {
-            break;
+            //break;
             mp.testMP3AudioI2S("/sdcard/Breath of the Wild (Main Theme) - The Legend of Zelda Breath of the Wild Soundtrack.mp3");
             ESP_LOGI(TAG, "Waiting 5s");
             vTaskDelay(pdMS_TO_TICKS(5000));
