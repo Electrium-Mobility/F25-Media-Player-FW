@@ -14,13 +14,13 @@
 #include "mp3dec.h"
 #include "audio_player.h"
 #include "audio_mp3.h"
-//#include "esp_timer.h"
+#include "esp_timer.h"
 
 #include "esp_system.h"
 #include <stdio.h>
 
 static const char *TAG3 = "MusicPlayer";
-#define BUFFER_SIZE 2048
+#define BUFFER_SIZE 1024*16
 #define USING_CUSTOM_BOARD
 uint32_t prevFreq = 44100;
 
@@ -180,6 +180,8 @@ void MusicPlayer::testWavAudioI2S(const char *file) {
         return;
     }
     ESP_LOGI(TAG3, "Starting WAV playback on %s", file);
+    long time = esp_timer_get_time();
+    
     // Allocating heap memory for buffer (alternatively call calloc)
     // NOTE: reading as uint is different from reading int!
     // Sounds fluctuates between + and - of the refernce point - always using unsigned means
@@ -188,6 +190,7 @@ void MusicPlayer::testWavAudioI2S(const char *file) {
     // Based off of what is printed in firmware, it's most likely that clipping is caused because
     // the power rails for the amp can't supply enough current, so it peaks
     // Also, what difference is there reading the file as int16 or an int8?
+
     int8_t *src_buf = (int8_t*) malloc(BUFFER_SIZE*sizeof(int8_t));
     memset(src_buf, 0, BUFFER_SIZE);
 
@@ -198,40 +201,48 @@ void MusicPlayer::testWavAudioI2S(const char *file) {
 
     size_t count = 0;
     i2c_master_transmit(dev_handle, myWM8731.addr_9E_daiON, 2, 100);
-    while(elements > 0 && count < 2000) { //
-        if (count % 200 == 0) {
-            ESP_LOGI(TAG3, "%d %d %d %d %d %d %d %d %d %d ", 
-                src_buf[0], 
-                src_buf[1], 
-                src_buf[2],
-                src_buf[3],
-                src_buf[4],
-                src_buf[5],
-                src_buf[6],
-                src_buf[7],
-                src_buf[8],
-                src_buf[9]
-            );
-            
-            //printf("\n");
-        } 
 
-        for (int i = 0; i < BUFFER_SIZE; i++) {
-            src_buf[i] = (int8_t)(src_buf[i] * volume);
+    while(elements > 0 ) { // && count < 2000
 
-            // // Hard clamp to prevent overflow
-            // if (temp > 32767) temp = 32767;
-            // if (temp < -32768) temp = -32768;
-        }
+        // for (int i = 0; i < BUFFER_SIZE; i++) {
+        //     src_buf[i] = (int8_t)(src_buf[i] * volume);
+        // }
 
         // Why must the third parameter be buffer_size * sizeof(int16_t)
         // Because the third parameter wants to know how many total BYTES your buffer has
         // That would be your BUFFER_SIZE (aka the number of elements) * sizeof(int16_t) (data type per element)
-        i2s_channel_write(tx_handle, src_buf, BUFFER_SIZE*sizeof(int8_t), &bytes_written, 100);
-        elements = fread(src_buf, sizeof(int8_t), BUFFER_SIZE, f);
-        if (bytes_written != BUFFER_SIZE*sizeof(int8_t)) {
-            ESP_LOGW(TAG3, "Only %d/%d bytes written", bytes_written, BUFFER_SIZE);
+        
+        // i2s_channel_write(tx_handle, src_buf, BUFFER_SIZE*sizeof(int8_t), &bytes_written, 100);
+        // elements = fread(src_buf, sizeof(int8_t), BUFFER_SIZE, f);
+
+        //if (count % 200 == 0) {
+            //printf("I2S Write Time: %lld us\n", esp_timer_get_time() - time);
+            //printf("%lld\n", esp_timer_get_time() - time);
+        //}
+       
+
+
+        if (count % 2 == 0) {
+            //time = esp_timer_get_time();
+            i2s_channel_write(tx_handle, src_buf, BUFFER_SIZE/2, &bytes_written, 100);
+            //printf("Write 1: %lld us\n", esp_timer_get_time() - time);
+            
+        } else {
+            //time = esp_timer_get_time();
+            i2s_channel_write(tx_handle, (src_buf + BUFFER_SIZE/2), BUFFER_SIZE*sizeof(int8_t)/2, &bytes_written, 100);
+            //printf("\tWrite 2: %lld us\n", esp_timer_get_time() - time);
+    
+            elements = fread(src_buf, sizeof(int8_t), BUFFER_SIZE, f);
         }
+    
+        // if (count % 200 == 0) {
+        //     printf("SRC Buff Read Time: %lld us\n", esp_timer_get_time() - time);
+        //     printf("%lld\n", esp_timer_get_time() - time);
+        // }
+
+        // if (bytes_written != BUFFER_SIZE*sizeof(int8_t)) {
+        //     ESP_LOGW(TAG3, "Only %d/%d bytes written", bytes_written, BUFFER_SIZE);
+        // }
         count++;
     }
     
@@ -377,7 +388,7 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
 
     int count = 0;
     
-    while (true && count < 1500) { //
+    while (true ) { //&& count < 1500
         // ESP_LOGI(TAG3, "NEW LOOP", status);
         // long time = esp_timer_get_time();
         status = decode_mp3(myDecoder, f, &output, &mp3_data);

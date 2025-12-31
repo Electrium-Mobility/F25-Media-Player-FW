@@ -42,4 +42,5 @@ public:
     void closeFile(const string& filePath);
     vector<uint8_t> readFileChunk(void* fileHandle);
     void handleRequest();
+    void testConstantRead();
 };

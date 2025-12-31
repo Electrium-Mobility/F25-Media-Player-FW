@@ -9,7 +9,8 @@
 #include <dirent.h>
 #include <sys/errno.h>
 
-
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #define MOUNT_POINT "/sdcard"
 #define TAG "SDCardManager"
@@ -58,7 +59,7 @@ bool SD::mountSD() {
     // a gpio_num_t type. In C++, it will complain because 1 is an integer. Note that it will also
     // complain about other pins that you won't be using either because it's picky like that!
     // 
-    slotConfig.width = 4;
+    slotConfig.width = 1;
 #ifdef USING_CUSTOM_BOARD
     slotConfig.d0 = GPIO_NUM_40;
     slotConfig.d1 = GPIO_NUM_39;
@@ -73,6 +74,8 @@ bool SD::mountSD() {
     ESP_LOGI(TAG, "Set SD bus width to 1");
     
     sdmmc_host_t hostConfig = SDMMC_HOST_DEFAULT();
+    //hostConfig.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
+    //hostConfig.driver_strength = SDMMC_DRIVER_STRENGTH_C;
     // TODO: might need to check out settings for this such as freq or speed?
     
     const char parentPath[] = MOUNT_POINT; //Remember, an array variable is a POINTER to the first element
@@ -380,4 +383,18 @@ std::vector<uint8_t> SD::readFileChunk(void* fileHandle) {
 
 void SD::handleRequest() {
     // TODO: Handle incoming file-related requests from control task via queue
+}
+
+void SD::testConstantRead() {
+    const char *file = "/sdcard/Black Tar - Xenoblade Chronicles X.wav";
+    FILE *f = fopen(file, "rb");
+    int8_t *src_buf = (int8_t*) malloc(1024*sizeof(int8_t));
+    memset(src_buf, 0, 1024);
+    size_t elements = fread(src_buf, sizeof(int8_t), 1024, f);
+    while (elements > 0) {
+        elements = fread(src_buf, sizeof(int8_t), 1024, f);
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    free(src_buf);
+    fclose(f);
 }
