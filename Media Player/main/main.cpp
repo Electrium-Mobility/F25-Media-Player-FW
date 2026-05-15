@@ -49,9 +49,9 @@ void testSDREAD(void * pvParameters ) {
 void testSpiffWav(void) {
     
     
-    TaskHandle_t xHandle = NULL;
-    xTaskCreate(testSDREAD, "Play Mp3", 10000, NULL, 1, &xHandle);
-    configASSERT( xHandle );
+    // TaskHandle_t xHandle = NULL;
+    // xTaskCreate(testSDREAD, "Play Mp3", 10000, NULL, 1, &xHandle);
+    // configASSERT( xHandle );
 
     
 
@@ -85,7 +85,7 @@ void testSpiffWav(void) {
     mp.testInitI2S();
     mp.testRunI2C();
     //mp.testWavAudioI2S("/spiffs/Silence.wav");
-    mp.testMP3AudioI2S("/spiffs/Silence.mp3");
+    //mp.testMP3AudioI2S("/spiffs/Silence.mp3");
     mp.testCloseI2C();
     mp.testCloseI2S();
 }
@@ -111,6 +111,7 @@ void testCompareWavMP3(void) {
         } else if (SONG == 6) {
             //break;
             //mp.testMP3AudioI2S("/sdcard/Breath of the Wild (Main Theme) - The Legend of Zelda Breath of the Wild Soundtrack.mp3");
+            mp.testMP3AudioI2S("/sdcard/Silence.mp3");
             //ESP_LOGI(TAG, "Waiting 5s");
             //vTaskDelay(pdMS_TO_TICKS(5000));
             //mp.testWavAudioI2S("/sdcard/Breath of the Wild (Main Theme) - The Legend of Zelda Breath of the Wild Soundtrack.wav");
@@ -181,8 +182,8 @@ int app_main(void)
     printf("--------------------------------------------------------------\n");
     if (TESTING_MODE) {
         //testBasicPlayback();
-        //testCompareWavMP3();
-        testSpiffWav();
+        testCompareWavMP3();
+        //testSpiffWav();
     }
     return 0;
 }

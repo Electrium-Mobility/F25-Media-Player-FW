@@ -16,6 +16,9 @@
 #include "audio_mp3.h"
 #include "esp_timer.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 #include "esp_system.h"
 #include <stdio.h>
 
@@ -460,6 +463,8 @@ void MusicPlayer::testMP3AudioI2S(const char *file) {
             break;
         }
         count++;
+        vTaskDelay(pdMS_TO_TICKS(100));
+
     }
 
     
